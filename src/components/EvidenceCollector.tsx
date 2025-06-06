@@ -18,7 +18,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Hook do Google Drive upload
   const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
@@ -76,14 +75,13 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   const startVideoRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
+        video: { 
+          facingMode: "environment" // Tylna kamera
+        }, 
         audio: true 
       });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
+      // Nie pokazujemy podglądu - nagrywamy bez preview jak przy zdjęciach
 
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
@@ -114,9 +112,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         
         // Zatrzymaj stream
         stream.getTracks().forEach(track => track.stop());
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
       };
 
       setMediaRecorder(recorder);
@@ -271,23 +266,18 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
               </button>
             </div>
 
-            {/* Video preview podczas nagrywania */}
+            {/* Status nagrywania zamiast podglądu */}
             {isRecording && (
-              <div className="mt-6">
-                <div className="bg-black rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    className="w-full h-64 object-cover"
-                  />
-                </div>
-                <div className="flex items-center justify-center mt-3">
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center justify-center">
                   <div className="flex items-center text-red-600">
-                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse mr-2"></div>
-                    <span className="text-sm font-medium">Nagrywanie w toku...</span>
+                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse mr-3"></div>
+                    <span className="text-lg font-medium">🎥 Nagrywanie w toku...</span>
                   </div>
                 </div>
+                <p className="text-center text-sm text-red-600 mt-2">
+                  Kliknij ponownie przycisk "Zatrzymaj nagrywanie" aby zakończyć
+                </p>
               </div>
             )}
           </div>
