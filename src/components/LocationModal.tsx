@@ -28,6 +28,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hasAutoLocalized, setHasAutoLocalized] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [currentRequestId, setCurrentRequestId] = useState<number>(0);
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -82,7 +83,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
         updateLocationFromCoordinates(lat, lng);
-      }, 600);
+      }, 1000); // Zwiększony timeout dla stabilności
     };
 
     map.on('moveend', () => {
@@ -122,6 +123,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       setHasAutoLocalized(false);
       setMapLoaded(false);
       setIsLoadingAddress(false);
+      setCurrentRequestId(0); // Reset request ID
       
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -130,8 +132,13 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   }, [isOpen]);
 
-  // Reverse geocoding
+  // Reverse geocoding z retry logic
   const updateLocationFromCoordinates = async (lat: number, lng: number) => {
+    // Generuj unikalny ID dla tego requestu
+    const requestId = Date.now();
+    setCurrentRequestId(requestId);
+    
+    console.log('🔍 Rozpoczęcie reverse geocoding dla:', lat, lng, 'RequestID:', requestId);
     setIsLoadingAddress(true);
     
     try {
@@ -141,16 +148,117 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         address: 'Pobieranie adresu...'
       }));
 
-      const response = await fetch(
-        `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`
-      );
-      
-      if (response.ok) {
+      // Funkcja retry z opóźnieniem
+      const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
+        for (let i = 0; i < retries; i++) {
+          // Sprawdź czy request nie został anulowany
+          if (currentRequestId !== requestId) {
+            console.log('🚫 Request anulowany (nowy request w trakcie)');
+            throw new Error('Request cancelled');
+          }
+          
+          try {
+            console.log(`🌐 Próba ${i + 1}/${retries}: ${url}`);
+            const response = await fetch(url);
+            if (response.ok) {
+              console.log('✅ Sukces API response');
+              return response;
+            }
+            throw new Error(`HTTP ${response.status}`);
+          } catch (error) {
+            console.log(`❌ Próba ${i + 1} nieudana:`, error);
+            if (i === retries - 1) throw error;
+            // Opóźnienie przed kolejną próbą
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          }
+        }
+        throw new Error('All retries failed');
+      };
+
+      // Pierwszy API: BigDataCloud (często bardziej stabilny)
+      try {
+        console.log('🔄 Próba BigDataCloud API...');
+        const response = await fetchWithRetry(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`
+        );
+        
+        // Sprawdź czy request nie został anulowany
+        if (currentRequestId !== requestId) {
+          console.log('🚫 Request anulowany przed przetworzeniem BigDataCloud');
+          return;
+        }
+        
         const data = await response.json();
+        console.log('📊 BigDataCloud data:', data);
+        
+        if (data && (data.locality || data.city || data.principalSubdivision)) {
+          const parts = [];
+          
+          // Buduj adres hierarchicznie
+          if (data.locality && data.locality !== data.city) {
+            parts.push(data.locality);
+          }
+          
+          if (data.city) {
+            parts.push(data.city);
+          } else if (data.principalSubdivision) {
+            parts.push(data.principalSubdivision);
+          }
+          
+          // Jeśli mamy więcej szczegółów, użyj ich
+          if (data.localityInfo && data.localityInfo.administrative) {
+            const admin = data.localityInfo.administrative;
+            const adminParts = [];
+            
+            if (admin.level6name) adminParts.push(admin.level6name); // dzielnica
+            if (admin.level4name && admin.level4name !== admin.level6name) adminParts.push(admin.level4name); // miasto
+            
+            if (adminParts.length > 0) {
+              const formattedAddress = adminParts.join(', ');
+              console.log('✅ BigDataCloud sukces:', formattedAddress);
+              
+              setSelectedLocation({
+                address: formattedAddress,
+                coordinates: { lat, lng }
+              });
+              return;
+            }
+          }
+          
+          const formattedAddress = parts.length > 0 ? parts.join(', ') : data.locality || 'Nieznana lokalizacja';
+          console.log('✅ BigDataCloud sukces (basic):', formattedAddress);
+          
+          setSelectedLocation({
+            address: formattedAddress,
+            coordinates: { lat, lng }
+          });
+          return;
+        }
+      } catch (error) {
+        if (error.message === 'Request cancelled') return;
+        console.log('❌ BigDataCloud failed:', error);
+      }
+
+      // Drugi API: geocode.maps.co
+      try {
+        console.log('🔄 Próba geocode.maps.co API...');
+        const response = await fetchWithRetry(
+          `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`
+        );
+        
+        // Sprawdź czy request nie został anulowany
+        if (currentRequestId !== requestId) {
+          console.log('🚫 Request anulowany przed przetworzeniem geocode.maps.co');
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('📊 geocode.maps.co data:', data);
         
         if (data && data.display_name) {
           let formattedAddress = data.display_name;
           
+          // Jeśli mamy strukturalne dane adresu, użyj ich
           if (data.address) {
             const parts = [];
             
@@ -173,10 +281,13 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             }
           }
           
+          // Ogranicz długość
           if (formattedAddress.length > 80) {
             const parts = formattedAddress.split(',').slice(0, 3);
             formattedAddress = parts.join(',').trim();
           }
+          
+          console.log('✅ geocode.maps.co sukces:', formattedAddress);
           
           setSelectedLocation({
             address: formattedAddress,
@@ -184,45 +295,63 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           });
           return;
         }
+      } catch (error) {
+        if (error.message === 'Request cancelled') return;
+        console.log('❌ geocode.maps.co failed:', error);
       }
 
-      // Fallback
-      const fallbackResponse = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`
-      );
-      
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        const parts = [];
+      // Trzeci API: Nominatim (jako ostateczny fallback)
+      try {
+        console.log('🔄 Próba Nominatim API...');
+        const response = await fetchWithRetry(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl`,
+          2 // Mniej retry dla Nominatim
+        );
         
-        if (fallbackData.locality && fallbackData.locality !== fallbackData.city) {
-          parts.push(fallbackData.locality);
+        // Sprawdź czy request nie został anulowany
+        if (currentRequestId !== requestId) {
+          console.log('🚫 Request anulowany przed przetworzeniem Nominatim');
+          return;
         }
         
-        if (fallbackData.city) {
-          parts.push(fallbackData.city);
+        const data = await response.json();
+        console.log('📊 Nominatim data:', data);
+        
+        if (data && data.display_name) {
+          const shortAddress = data.display_name.split(',').slice(0, 3).join(', ');
+          console.log('✅ Nominatim sukces:', shortAddress);
+          
+          setSelectedLocation({
+            address: shortAddress,
+            coordinates: { lat, lng }
+          });
+          return;
         }
-        
-        const formattedAddress = parts.length > 0 ? parts.join(', ') : 'Nieznana lokalizacja';
-        
-        setSelectedLocation({
-          address: formattedAddress,
-          coordinates: { lat, lng }
-        });
-        return;
+      } catch (error) {
+        if (error.message === 'Request cancelled') return;
+        console.log('❌ Nominatim failed:', error);
       }
       
-      throw new Error('API failed');
+      throw new Error('Wszystkie API zawiodły');
       
     } catch (error) {
+      if (error.message === 'Request cancelled') return;
+      
+      console.error('❌ Błąd reverse geocoding - używam fallback:', error);
+      
+      // Ostateczny fallback - współrzędne
       const fallbackAddress = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+      console.log('🔧 Fallback address:', fallbackAddress);
       
       setSelectedLocation({
         address: fallbackAddress,
         coordinates: { lat, lng }
       });
     } finally {
-      setIsLoadingAddress(false);
+      // Tylko zakończ loading jeśli to jest najnowszy request
+      if (currentRequestId === requestId) {
+        setIsLoadingAddress(false);
+      }
     }
   };
 
