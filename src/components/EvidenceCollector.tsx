@@ -3,6 +3,7 @@ import { Camera, Video, Upload, Plus } from 'lucide-react';
 import { GoogleUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
+import { LogOut } from "lucide-react";
 import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
 
 interface EvidenceCollectorProps {
@@ -135,25 +136,15 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                {user.picture && (
-                  <img
-                    src={user.picture}
-                    alt="Avatar"
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm text-gray-700">
-                  {user.given_name || user.name}
-                </span>
-              </div>
               
               <button
-                onClick={onSignOut}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-              >
-                Wyloguj
-              </button>
+  onClick={onSignOut}
+  className="p-2 rounded-full text-red-600 hover:bg-red-100 transition-colors"
+  title="Wyloguj"
+>
+  <LogOut className="w-6 h-6" />
+</button>
+
             </div>
           </div>
         </div>
