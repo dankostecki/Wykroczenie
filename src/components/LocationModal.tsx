@@ -353,14 +353,16 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             
             {/* Stała pinezka w środku mapy */}
             {mapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000 }}>
                 <div className="relative">
-                  {/* Pinezka */}
-                  <div className="w-10 h-10 bg-red-600 rounded-full border-4 border-white shadow-xl flex items-center justify-center transform -translate-y-5">
-                    <MapPin className="w-6 h-6 text-white fill-current" />
+                  {/* Pinezka - większa i bardziej widoczna */}
+                  <div className="w-12 h-12 bg-red-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transform -translate-y-6">
+                    <MapPin className="w-7 h-7 text-white fill-white" />
                   </div>
                   {/* Cień pinezki */}
-                  <div className="absolute top-5 left-1/2 transform -translate-x-1/2 w-6 h-3 bg-black bg-opacity-30 rounded-full blur-sm"></div>
+                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-8 h-4 bg-black bg-opacity-40 rounded-full blur-md"></div>
+                  {/* Punkt w środku dla precyzji */}
+                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
                 </div>
               </div>
             )}
