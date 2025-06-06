@@ -74,7 +74,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       user: user.email
     });
     
-    alert('Zgłoszenie zostało przesłane!');
+    alert('Zgłoszenie zostało przesłane pomyślnie!');
   };
 
   const removeFile = (id: string) => {
@@ -151,10 +151,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
             <div className="flex items-center">
               <Shield className="w-6 h-6 text-white mr-2" />
-              <h2 className="text-xl font-bold text-white">Incident Details</h2>
+              <h2 className="text-xl font-bold text-white">Szczegóły Incydentu</h2>
             </div>
             <p className="text-blue-100 text-sm mt-1">
-              Provide details about what happened
+              Podaj szczegóły dotyczące zdarzenia
             </p>
           </div>
 
@@ -163,14 +163,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             {/* Tytuł incydentu */}
             <div>
               <label htmlFor="incident-title" className="block text-sm font-medium text-gray-700 mb-2">
-                Incident Title
+                Tytuł incydentu
               </label>
               <input
                 id="incident-title"
                 type="text"
                 value={reportData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="e.g. Suspicious activity, Traffic accident"
+                placeholder="np. Podejrzana aktywność, Wypadek drogowy"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 required
               />
@@ -179,14 +179,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             {/* Opis */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                Description
+                Opis zdarzenia
               </label>
               <textarea
                 id="description"
                 rows={6}
                 value={reportData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Describe what happened in detail..."
+                placeholder="Opisz szczegółowo co się wydarzyło..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 required
               />
@@ -195,56 +195,74 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             {/* Lokalizacja */}
             <div>
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                Location
+                Lokalizacja
               </label>
               
               {/* Display wybranej lokalizacji */}
               {reportData.location ? (
-                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <div className="flex items-start">
-                    <MapPin className="w-5 h-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-green-900">Wybrana lokalizacja:</p>
-                      <p className="text-sm text-green-700 mt-1">{reportData.location}</p>
-                      {reportData.coordinates && (
-                        <p className="text-xs text-green-600 mt-1">
-                          Współrzędne: {reportData.coordinates.lat.toFixed(6)}, {reportData.coordinates.lng.toFixed(6)}
-                        </p>
-                      )}
+                <div className="mb-3">
+                  {/* Wybrana lokalizacja */}
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md mb-3">
+                    <div className="flex items-start">
+                      <MapPin className="w-5 h-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-900">Wybrana lokalizacja:</p>
+                        <p className="text-sm text-green-700 mt-1">{reportData.location}</p>
+                        {reportData.coordinates && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Współrzędne: {reportData.coordinates.lat.toFixed(6)}, {reportData.coordinates.lng.toFixed(6)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Przycisk edycji lokalizacji */}
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationModalOpen(true)}
+                    className="w-full p-3 border border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group flex items-center justify-center"
+                  >
+                    <MapPin className="w-5 h-5 text-blue-600 mr-2" />
+                    <span className="text-sm font-medium text-blue-700">
+                      Zmień lokalizację na mapie
+                    </span>
+                  </button>
                 </div>
               ) : (
-                <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
-                  <div className="flex items-center">
-                    <MapPin className="w-5 h-5 text-orange-600 mr-2" />
-                    <p className="text-sm text-orange-700">Lokalizacja nie została wybrana</p>
+                <div className="mb-3">
+                  {/* Brak lokalizacji */}
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-md mb-3">
+                    <div className="flex items-center">
+                      <MapPin className="w-5 h-5 text-orange-600 mr-2" />
+                      <p className="text-sm text-orange-700">Lokalizacja nie została wybrana</p>
+                    </div>
                   </div>
+
+                  {/* Przycisk do otwierania mapy */}
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationModalOpen(true)}
+                    className="w-full p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+                  >
+                    <div className="flex flex-col items-center">
+                      <MapPin className="w-8 h-8 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium text-gray-700">
+                        Wybierz lokalizację na mapie
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        Dokładnie wskaż miejsce incydentu
+                      </span>
+                    </div>
+                  </button>
                 </div>
               )}
-
-              {/* Przycisk do otwierania mapy */}
-              <button
-                type="button"
-                onClick={() => setIsLocationModalOpen(true)}
-                className="w-full p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
-              >
-                <div className="flex flex-col items-center">
-                  <MapPin className="w-8 h-8 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {reportData.location ? 'Zmień lokalizację' : 'Wybierz lokalizację na mapie'}
-                  </span>
-                  <span className="text-xs text-gray-500 mt-1">
-                    Dokładnie wskaż miejsce incydentu
-                  </span>
-                </div>
-              </button>
             </div>
 
             {/* Sekcja z plikami */}
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-3">
-                Your Evidence ({files.length})
+                Twoje dowody ({files.length})
               </h3>
               {files.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
@@ -277,7 +295,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 disabled={isUploading && uploadProgress < 100}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
               >
-                <span>Continue to Recipient</span>
+                <span>Kontynuuj do odbiorcy</span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
