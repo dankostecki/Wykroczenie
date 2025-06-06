@@ -1,12 +1,10 @@
-// src/components/FileThumbnail.tsx
 import React from 'react';
 import { Image, Film, FileText, X } from 'lucide-react';
 import { MediaFile } from '../types';
 
 interface FileThumbnailProps {
   mediaFile: MediaFile;
-  /** Jeśli podasz, pojawi się przycisk X do usunięcia */
-  onRemove?: (id: string) => void;
+  onRemove: (id: string) => void;
 }
 
 // Funkcja do formatowania rozmiaru pliku
@@ -18,10 +16,7 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const FileThumbnail: React.FC<FileThumbnailProps> = ({
-  mediaFile,
-  onRemove
-}) => {
+export const FileThumbnail: React.FC<FileThumbnailProps> = ({ mediaFile, onRemove }) => {
   const getIcon = () => {
     switch (mediaFile.type) {
       case 'image':
@@ -61,18 +56,16 @@ export const FileThumbnail: React.FC<FileThumbnailProps> = ({
             </span>
           </div>
         )}
-
-        {/* Przycisk usuwania (tylko jeśli onRemove przekazano) */}
-        {onRemove && (
-          <button
-            onClick={() => onRemove(mediaFile.id)}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        
+        {/* Przycisk usuwania */}
+        <button
+          onClick={() => onRemove(mediaFile.id)}
+          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
-
+      
       {/* Informacje o pliku przy hover */}
       <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="truncate">{mediaFile.name}</div>
