@@ -179,7 +179,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <h2 className="text-xl font-bold text-white mb-1">📸 Zbierz Dowody</h2>
+            <h2 className="text-xl font-bold text-white mb-1">Zbierz Dowody</h2>
             <p className="text-blue-100 text-sm">
               Zrób zdjęcia lub nagraj filmy dokumentujące wykroczenie
             </p>
