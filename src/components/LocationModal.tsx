@@ -80,7 +80,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }).addTo(map);
 
     // Funkcja debounce dla lepszej wydajności
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number;
     const debouncedReverseGeocode = (lat: number, lng: number) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
