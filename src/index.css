@@ -1,5 +1,6 @@
-/* Tailwind CSS via CDN */
-@import "https://cdn.tailwindcss.com/3.4.0/index.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
   margin: 0;
