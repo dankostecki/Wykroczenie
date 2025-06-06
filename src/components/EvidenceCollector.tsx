@@ -124,7 +124,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
       setIsRecording(true);
     } catch (error) {
       console.error('Błąd podczas uruchamiania nagrywania:', error);
-      alert('Nie udało się uruchomić nagrywania. Sprawdź uprawnienia do kamery i mikrofonu.');
+      alert('Nie udało się uruchomić nagrywania. Sprawdź czy przeglądarka ma dostęp do kamery i mikrofonu.');
     }
   };
 
@@ -147,7 +147,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   // Funkcja do przejścia do formularza zgłoszenia
   const handleContinueToReport = async () => {
     if (files.length === 0) {
-      alert('Dodaj przynajmniej jeden plik jako dowód');
+      alert('Dodaj przynajmniej jeden plik jako dowód incydentu');
       return;
     }
 
@@ -160,7 +160,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
       console.log('Pliki zostały przesłane na Google Drive');
     } catch (error) {
       console.error('Błąd podczas przesyłania plików:', error);
-      alert('Wystąpił błąd podczas przesyłania plików. Spróbuj ponownie.');
+      alert('Wystąpił błąd podczas przesyłania plików na Google Drive. Spróbuj ponownie.');
     }
   };
 
