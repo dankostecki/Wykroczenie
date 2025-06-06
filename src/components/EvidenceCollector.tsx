@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Camera, Video, Upload, Plus } from 'lucide-react';
 import { GoogleUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
+import { ReportForm } from './ReportForm';
+import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
 
 interface EvidenceCollectorProps {
   user: GoogleUser;
@@ -12,10 +14,14 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [currentStep, setCurrentStep] = useState<'evidence' | 'report'>('evidence');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Hook do Google Drive upload
+  const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
 
   // Funkcja do generowania unikalnego ID
   const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -138,6 +144,45 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     }
   };
 
+  // Funkcja do przejścia do formularza zgłoszenia
+  const handleContinueToReport = async () => {
+    if (files.length === 0) {
+      alert('Dodaj przynajmniej jeden plik jako dowód');
+      return;
+    }
+
+    // Przejdź do następnego ekranu
+    setCurrentStep('report');
+    
+    // Rozpocznij upload plików w tle
+    try {
+      await uploadFiles(files);
+      console.log('Pliki zostały przesłane na Google Drive');
+    } catch (error) {
+      console.error('Błąd podczas przesyłania plików:', error);
+      alert('Wystąpił błąd podczas przesyłania plików. Spróbuj ponownie.');
+    }
+  };
+
+  // Funkcja do powrotu do ekranu dowodów
+  const handleBackToEvidence = () => {
+    setCurrentStep('evidence');
+  };
+
+  // Renderuj odpowiedni ekran
+  if (currentStep === 'report') {
+    return (
+      <ReportForm
+        user={user}
+        files={files}
+        onSignOut={onSignOut}
+        onBack={handleBackToEvidence}
+        uploadProgress={progress}
+        isUploading={isUploading}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -179,7 +224,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <h2 className="text-xl font-bold text-white mb-1">Zbierz Dowody</h2>
+            <h2 className="text-xl font-bold text-white mb-1">📸 Zbierz Dowody</h2>
             <p className="text-blue-100 text-sm">
               Zrób zdjęcia lub nagraj filmy dokumentujące wykroczenie
             </p>
@@ -288,7 +333,10 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
           {/* Przycisk kontynuacji */}
           {files.length > 0 && (
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+              <button 
+                onClick={handleContinueToReport}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+              >
                 <span>Kontynuuj zgłoszenie</span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
