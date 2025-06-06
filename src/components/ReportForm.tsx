@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, MapPin, ArrowLeft } from 'lucide-react';
-import { GoogleUser, MediaFile } from '../types';
+import { GoogleUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { LocationModal } from './LocationModal';
 
@@ -11,16 +11,6 @@ interface ReportFormProps {
   onBack: () => void;
   uploadProgress: number;
   isUploading: boolean;
-}
-
-interface ReportData {
-  title: string;
-  description: string;
-  location: string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
 }
 
 export const ReportForm: React.FC<ReportFormProps> = ({ 
@@ -196,7 +186,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 rows={6}
                 value={reportData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Opisz co się stało..."
+                placeholder="Describe what happened in detail..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 required
               />
