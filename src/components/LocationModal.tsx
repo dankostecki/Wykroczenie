@@ -28,8 +28,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hasAutoLocalized, setHasAutoLocalized] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
-  const [currentRequestId, setCurrentRequestId] = useState<number>(0);
-  
+  // <-- POPRAWKA: używaj useRef zamiast useState do requestId
+  const currentRequestIdRef = useRef<number>(0);
+
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
@@ -110,7 +111,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         clearTimeout(timeoutId);
       }
     };
-  }, [mapLoaded, isOpen]);
+  }, [mapLoaded, isOpen]); // jeśli chcesz: dodaj selectedLocation.coordinates dla odświeżania
 
   // Reset przy zamknięciu
   useEffect(() => {
@@ -123,8 +124,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       setHasAutoLocalized(false);
       setMapLoaded(false);
       setIsLoadingAddress(false);
-      setCurrentRequestId(0); // Reset request ID
-      
+      currentRequestIdRef.current = 0; // resetuj ref
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -132,15 +132,15 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   }, [isOpen]);
 
-  // Reverse geocoding z retry logic
+  // Reverse geocoding z poprawnym requestId
   const updateLocationFromCoordinates = async (lat: number, lng: number) => {
     // Generuj unikalny ID dla tego requestu
     const requestId = Date.now();
-    setCurrentRequestId(requestId);
-    
+    currentRequestIdRef.current = requestId;
+
     console.log('🔍 Rozpoczęcie reverse geocoding dla:', lat, lng, 'RequestID:', requestId);
     setIsLoadingAddress(true);
-    
+
     try {
       setSelectedLocation(prev => ({
         ...prev,
@@ -148,15 +148,15 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         address: 'Pobieranie adresu...'
       }));
 
-      // Funkcja retry z opóźnieniem
+      // Retry logic
       const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
         for (let i = 0; i < retries; i++) {
-          // Sprawdź czy request nie został anulowany
-          if (currentRequestId !== requestId) {
+          // Tu odczytujemy aktualny ref!
+          if (currentRequestIdRef.current !== requestId) {
             console.log('🚫 Request anulowany (nowy request w trakcie)');
             throw new Error('Request cancelled');
           }
-          
+
           try {
             console.log(`🌐 Próba ${i + 1}/${retries}: ${url}`);
             const response = await fetch(url);
@@ -176,48 +176,32 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         throw new Error('All retries failed');
       };
 
-      // Pierwszy API: BigDataCloud (często bardziej stabilny)
+      // --- BigDataCloud
       try {
         console.log('🔄 Próba BigDataCloud API...');
         const response = await fetchWithRetry(
           `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`
         );
-        
-        // Sprawdź czy request nie został anulowany
-        if (currentRequestId !== requestId) {
+        if (currentRequestIdRef.current !== requestId) {
           console.log('🚫 Request anulowany przed przetworzeniem BigDataCloud');
           return;
         }
-        
         const data = await response.json();
         console.log('📊 BigDataCloud data:', data);
-        
+
         if (data && (data.locality || data.city || data.principalSubdivision)) {
           const parts = [];
-          
-          // Buduj adres hierarchicznie
-          if (data.locality && data.locality !== data.city) {
-            parts.push(data.locality);
-          }
-          
-          if (data.city) {
-            parts.push(data.city);
-          } else if (data.principalSubdivision) {
-            parts.push(data.principalSubdivision);
-          }
-          
-          // Jeśli mamy więcej szczegółów, użyj ich
+          if (data.locality && data.locality !== data.city) parts.push(data.locality);
+          if (data.city) parts.push(data.city);
+          else if (data.principalSubdivision) parts.push(data.principalSubdivision);
+
           if (data.localityInfo && data.localityInfo.administrative) {
             const admin = data.localityInfo.administrative;
             const adminParts = [];
-            
-            if (admin.level6name) adminParts.push(admin.level6name); // dzielnica
-            if (admin.level4name && admin.level4name !== admin.level6name) adminParts.push(admin.level4name); // miasto
-            
+            if (admin.level6name) adminParts.push(admin.level6name);
+            if (admin.level4name && admin.level4name !== admin.level6name) adminParts.push(admin.level4name);
             if (adminParts.length > 0) {
               const formattedAddress = adminParts.join(', ');
-              console.log('✅ BigDataCloud sukces:', formattedAddress);
-              
               setSelectedLocation({
                 address: formattedAddress,
                 coordinates: { lat, lng }
@@ -225,10 +209,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               return;
             }
           }
-          
+
           const formattedAddress = parts.length > 0 ? parts.join(', ') : data.locality || 'Nieznana lokalizacja';
-          console.log('✅ BigDataCloud sukces (basic):', formattedAddress);
-          
           setSelectedLocation({
             address: formattedAddress,
             coordinates: { lat, lng }
@@ -241,56 +223,42 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         console.log('❌ BigDataCloud failed:', error);
       }
 
-      // Drugi API: geocode.maps.co
+      // --- geocode.maps.co
       try {
         console.log('🔄 Próba geocode.maps.co API...');
         const response = await fetchWithRetry(
           `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`
         );
-        
-        // Sprawdź czy request nie został anulowany
-        if (currentRequestId !== requestId) {
+        if (currentRequestIdRef.current !== requestId) {
           console.log('🚫 Request anulowany przed przetworzeniem geocode.maps.co');
           return;
         }
-        
         const data = await response.json();
         console.log('📊 geocode.maps.co data:', data);
-        
+
         if (data && data.display_name) {
           let formattedAddress = data.display_name;
-          
-          // Jeśli mamy strukturalne dane adresu, użyj ich
           if (data.address) {
             const parts = [];
-            
             if (data.address.house_number && data.address.road) {
               parts.push(`${data.address.road} ${data.address.house_number}`);
             } else if (data.address.road) {
               parts.push(data.address.road);
             }
-            
             if (data.address.suburb || data.address.neighbourhood || data.address.city_district) {
               parts.push(data.address.suburb || data.address.neighbourhood || data.address.city_district);
             }
-            
             if (data.address.city || data.address.town || data.address.village) {
               parts.push(data.address.city || data.address.town || data.address.village);
             }
-            
             if (parts.length > 0) {
               formattedAddress = parts.join(', ');
             }
           }
-          
-          // Ogranicz długość
           if (formattedAddress.length > 80) {
             const parts = formattedAddress.split(',').slice(0, 3);
             formattedAddress = parts.join(',').trim();
           }
-          
-          console.log('✅ geocode.maps.co sukces:', formattedAddress);
-          
           setSelectedLocation({
             address: formattedAddress,
             coordinates: { lat, lng }
@@ -303,27 +271,22 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         console.log('❌ geocode.maps.co failed:', error);
       }
 
-      // Trzeci API: Nominatim (jako ostateczny fallback)
+      // --- Nominatim
       try {
         console.log('🔄 Próba Nominatim API...');
         const response = await fetchWithRetry(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl`,
-          2 // Mniej retry dla Nominatim
+          2
         );
-        
-        // Sprawdź czy request nie został anulowany
-        if (currentRequestId !== requestId) {
+        if (currentRequestIdRef.current !== requestId) {
           console.log('🚫 Request anulowany przed przetworzeniem Nominatim');
           return;
         }
-        
         const data = await response.json();
         console.log('📊 Nominatim data:', data);
-        
+
         if (data && data.display_name) {
           const shortAddress = data.display_name.split(',').slice(0, 3).join(', ');
-          console.log('✅ Nominatim sukces:', shortAddress);
-          
           setSelectedLocation({
             address: shortAddress,
             coordinates: { lat, lng }
@@ -335,26 +298,19 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         if (error.message === 'Request cancelled') return;
         console.log('❌ Nominatim failed:', error);
       }
-      
+
       throw new Error('Wszystkie API zawiodły');
-      
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       if (error.message === 'Request cancelled') return;
-      
-      console.error('❌ Błąd reverse geocoding - używam fallback:', error);
-      
       // Ostateczny fallback - współrzędne
       const fallbackAddress = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-      console.log('🔧 Fallback address:', fallbackAddress);
-      
       setSelectedLocation({
         address: fallbackAddress,
         coordinates: { lat, lng }
       });
     } finally {
-      // Tylko zakończ loading jeśli to jest najnowszy request
-      if (currentRequestId === requestId) {
+      if (currentRequestIdRef.current === requestId) {
         setIsLoadingAddress(false);
       }
     }
@@ -363,41 +319,39 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Wyszukiwanie
   const searchLocation = async () => {
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
     try {
       const response = await fetch(
         `https://geocode.maps.co/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=3&countrycodes=pl`
       );
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         if (data.length > 0) {
           const result = data[0];
           const lat = parseFloat(result.lat);
           const lng = parseFloat(result.lon);
-          
+
           if (mapInstanceRef.current) {
             mapInstanceRef.current.setView([lat, lng], 18);
           }
-          
+
           let formattedAddress = result.display_name;
-          
           if (formattedAddress.includes(',')) {
             const parts = formattedAddress.split(',').slice(0, 3);
             formattedAddress = parts.join(',').trim();
           }
-          
           if (formattedAddress.length > 100) {
             formattedAddress = formattedAddress.substring(0, 97) + '...';
           }
-          
+
           setSelectedLocation({
             address: formattedAddress,
             coordinates: { lat, lng }
           });
-          
+
           setSearchQuery('');
         } else {
           alert('Nie znaleziono miejsca. Spróbuj bardziej szczegółowego wyszukiwania.');
@@ -423,16 +377,13 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([latitude, longitude], 18);
         }
-        
         setSelectedLocation({
           address: 'Pobieranie adresu...',
           coordinates: { lat: latitude, lng: longitude }
         });
-        
         setIsGettingLocation(false);
       },
       (error) => {
@@ -440,7 +391,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         if (error.code === error.PERMISSION_DENIED) {
           message = 'Dostęp do lokalizacji został zablokowany. Możesz wyszukać adres ręcznie.';
         }
-        
         alert(message);
         setIsGettingLocation(false);
       },
@@ -458,7 +408,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       alert('Proszę wybrać lokalizację na mapie lub wyszukać adres');
       return;
     }
-    
     onLocationSelect(selectedLocation);
     onClose();
   };
@@ -468,7 +417,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
         ></div>
@@ -502,7 +451,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <button
                 onClick={searchLocation}
@@ -534,7 +483,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               )}
             </div>
-            
+
             {/* Pinezka */}
             {mapLoaded && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000 }}>
@@ -547,7 +496,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               </div>
             )}
-            
+
             {/* Instructions */}
             <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-md p-2 shadow-sm max-w-xs border">
               <p className="text-xs text-gray-700">
