@@ -68,7 +68,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     loadLeaflet();
   }, [isOpen]);
 
-  // Inicjalizacja mapy
+  // Inicjalizacja mapy i automatyczne pobieranie lokalizacji
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
 
@@ -102,6 +102,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
     mapInstanceRef.current = map;
     markerRef.current = marker;
+
+    // Automatycznie pobierz lokalizację gdy mapa się załaduje
+    setTimeout(() => {
+      getCurrentLocation();
+    }, 500);
 
     return () => {
       if (mapInstanceRef.current) {
@@ -201,7 +206,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Pobierz aktualną lokalizację
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolokalizacja nie jest obsługiwana');
+      alert('Geolokalizacja nie jest obsługiwana w tej przeglądarce');
       return;
     }
 
@@ -221,7 +226,19 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       },
       (error) => {
         console.error('Błąd geolokalizacji:', error);
-        alert('Nie udało się pobrać lokalizacji');
+        let errorMessage = 'Nie udało się pobrać lokalizacji';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Dostęp do lokalizacji został odrzucony. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Lokalizacja jest niedostępna. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Przekroczono czas oczekiwania na lokalizację. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+        }
+        alert(errorMessage);
         setIsGettingLocation(false);
       },
       {
@@ -264,8 +281,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
           {/* Search bar */}
           <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex gap-2 mb-3">
-              <div className="flex-1 relative">
+            {/* Search input - szeroki nad przyciskami */}
+            <div className="mb-3">
+              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-5 w-5 text-gray-400" />
                 </div>
@@ -275,20 +293,24 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
                   placeholder="Wyszukaj adres (np. ul. Marszałkowska 1, Warszawa)"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+            </div>
+            
+            {/* Przyciski akcji */}
+            <div className="flex gap-2 mb-3">
               <button
                 onClick={searchLocation}
                 disabled={isSearching || !searchQuery.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {isSearching ? 'Szukam...' : 'Szukaj'}
+                {isSearching ? 'Wyszukuję...' : 'Wyszukaj'}
               </button>
               <button
                 onClick={getCurrentLocation}
                 disabled={isGettingLocation}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
               >
                 <Navigation className="w-4 h-4 mr-1" />
                 {isGettingLocation ? 'Lokalizuję...' : 'Moja lokalizacja'}
