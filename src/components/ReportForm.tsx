@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MapPin, ArrowLeft } from 'lucide-react';
+import { Shield, MapPin, ArrowLeft, X } from 'lucide-react';
 import { GoogleUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { LocationModal } from './LocationModal';
@@ -46,6 +46,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       ...prev,
       location: location.address,
       coordinates: location.coordinates
+    }));
+  };
+
+  const handleLocationRemove = () => {
+    setReportData(prev => ({
+      ...prev,
+      location: '',
+      coordinates: undefined
     }));
   };
 
@@ -217,17 +225,30 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                     </div>
                   </div>
 
-                  {/* Przycisk edycji lokalizacji */}
-                  <button
-                    type="button"
-                    onClick={() => setIsLocationModalOpen(true)}
-                    className="w-full p-3 border border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group flex items-center justify-center"
-                  >
-                    <MapPin className="w-5 h-5 text-blue-600 mr-2" />
-                    <span className="text-sm font-medium text-blue-700">
-                      Zmień lokalizację na mapie
-                    </span>
-                  </button>
+                  {/* Przyciski edycji i usuwania lokalizacji */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationModalOpen(true)}
+                      className="flex-1 p-3 border border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group flex items-center justify-center"
+                    >
+                      <MapPin className="w-5 h-5 text-blue-600 mr-2" />
+                      <span className="text-sm font-medium text-blue-700">
+                        Zmień lokalizację
+                      </span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={handleLocationRemove}
+                      className="px-4 py-3 border border-red-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4 text-red-600 mr-1" />
+                      <span className="text-sm font-medium text-red-700">
+                        Usuń
+                      </span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="mb-3">
