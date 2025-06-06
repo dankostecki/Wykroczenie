@@ -71,65 +71,16 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     }
   };
 
-  // Funkcja do nagrywania filmu
-  const startVideoRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: "environment" // Tylna kamera
-        }, 
-        audio: true 
-      });
-      
-      // Nie pokazujemy podglądu - nagrywamy bez preview jak przy zdjęciach
-
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const file = new File([blob], `nagranie_${Date.now()}.webm`, {
-          type: 'video/webm'
-        });
-        
-        const url = URL.createObjectURL(blob);
-        const mediaFile: MediaFile = {
-          id: generateId(),
-          file,
-          type: 'video',
-          url,
-          name: file.name,
-          size: file.size
-        };
-        
-        setFiles(prev => [...prev, mediaFile]);
-        
-        // Zatrzymaj stream
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      setMediaRecorder(recorder);
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Błąd podczas uruchamiania nagrywania:', error);
-      alert('Nie udało się uruchomić nagrywania. Sprawdź czy przeglądarka ma dostęp do kamery i mikrofonu.');
+  // Funkcja do nagrywania filmu - otwiera natywną kamerę
+  const startVideoRecording = () => {
+    if (videoInputRef.current) {
+      videoInputRef.current.click();
     }
   };
 
-  // Funkcja do zatrzymywania nagrywania
+  // Funkcja do zatrzymywania nagrywania - już nie potrzebna
   const stopVideoRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
+    // Nie potrzebna - natywna kamera się sama zatrzymuje
   };
 
   // Funkcja do wybierania plików z urządzenia
@@ -239,21 +190,11 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
 
               {/* Przycisk nagrywania */}
               <button
-                onClick={isRecording ? stopVideoRecording : startVideoRecording}
-                className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg transition-colors group ${
-                  isRecording
-                    ? 'border-red-300 bg-red-50 hover:border-red-400'
-                    : 'border-purple-300 hover:border-purple-400 hover:bg-purple-50'
-                }`}
+                onClick={startVideoRecording}
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 hover:border-purple-400 hover:bg-purple-50 transition-colors group"
               >
-                <Video className={`w-8 h-8 mb-2 group-hover:scale-110 transition-transform ${
-                  isRecording ? 'text-red-600' : 'text-purple-600'
-                }`} />
-                <span className={`text-sm font-medium ${
-                  isRecording ? 'text-red-700' : 'text-gray-700'
-                }`}>
-                  {isRecording ? 'Zatrzymaj nagrywanie' : 'Nagraj film'}
-                </span>
+                <Video className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-medium text-gray-700">Nagraj film</span>
               </button>
 
               {/* Przycisk dodawania plików */}
@@ -265,21 +206,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
                 <span className="text-sm font-medium text-gray-700">Dodaj pliki</span>
               </button>
             </div>
-
-            {/* Status nagrywania zamiast podglądu */}
-            {isRecording && (
-              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center text-red-600">
-                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse mr-3"></div>
-                    <span className="text-lg font-medium">🎥 Nagrywanie w toku...</span>
-                  </div>
-                </div>
-                <p className="text-center text-sm text-red-600 mt-2">
-                  Kliknij ponownie przycisk "Zatrzymaj nagrywanie" aby zakończyć
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Sekcja z plikami */}
@@ -350,6 +276,14 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         ref={cameraInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
         capture="environment"
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
