@@ -37,7 +37,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
 
   // Ładowanie Leaflet CSS i JS
   useEffect(() => {
@@ -68,6 +67,22 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     loadLeaflet();
   }, [isOpen]);
 
+  // Aktualizuj lokalizację gdy initialLocation się zmieni
+  useEffect(() => {
+    if (initialLocation && isOpen) {
+      setSelectedLocation(initialLocation);
+      setSearchQuery(''); // Wyczyść search gdy otwieramy z nową lokalizacją
+    }
+  }, [initialLocation, isOpen]);
+
+  // Aktualizuj mapę gdy selectedLocation się zmieni (dla edycji)
+  useEffect(() => {
+    if (mapInstanceRef.current && mapLoaded) {
+      const { lat, lng } = selectedLocation.coordinates;
+      mapInstanceRef.current.setView([lat, lng], 17);
+    }
+  }, [selectedLocation, mapLoaded]);
+
   // Inicjalizacja mapy i automatyczne pobieranie lokalizacji
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
@@ -82,37 +97,32 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Dodaj marker
-    const marker = window.L.marker([lat, lng], {
-      draggable: true
-    }).addTo(map);
-
-    // Event listener dla przeciągania markera
-    marker.on('dragend', async (e: any) => {
-      const position = e.target.getLatLng();
-      await updateLocationFromCoordinates(position.lat, position.lng);
+    // Event listener dla przesuwania mapy - aktualizuj lokalizację na podstawie centrum
+    map.on('moveend', async () => {
+      const center = map.getCenter();
+      await updateLocationFromCoordinates(center.lat, center.lng);
     });
 
-    // Event listener dla kliknięcia na mapę
-    map.on('click', async (e: any) => {
-      const { lat, lng } = e.latlng;
-      marker.setLatLng([lat, lng]);
-      await updateLocationFromCoordinates(lat, lng);
+    // Event listener dla zoomowania - też aktualizuj lokalizację
+    map.on('zoomend', async () => {
+      const center = map.getCenter();
+      await updateLocationFromCoordinates(center.lat, center.lng);
     });
 
     mapInstanceRef.current = map;
-    markerRef.current = marker;
+    // Nie potrzebujemy markerRef - pinezka będzie w CSS
 
-    // Automatycznie pobierz lokalizację gdy mapa się załaduje
+    // Automatycznie pobierz lokalizację gdy mapa się załaduje, ale tylko jeśli nie mamy initialLocation
     setTimeout(() => {
-      getCurrentLocation();
+      if (!initialLocation) {
+        getCurrentLocation();
+      }
     }, 500);
 
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
-        markerRef.current = null;
       }
     };
   }, [mapLoaded]);
@@ -182,10 +192,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         const lat = parseFloat(result.lat);
         const lng = parseFloat(result.lon);
         
-        // Przenieś mapę i marker
-        if (mapInstanceRef.current && markerRef.current) {
+        // Przenieś mapę do znalezionej lokalizacji
+        if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([lat, lng], 17);
-          markerRef.current.setLatLng([lat, lng]);
         }
         
         setSelectedLocation({
@@ -206,7 +215,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Pobierz aktualną lokalizację
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolokalizacja nie jest obsługiwana w tej przeglądarce');
+      alert('Geolokalizacja nie jest obsługiwana');
       return;
     }
 
@@ -215,10 +224,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       async (position) => {
         const { latitude, longitude } = position.coords;
         
-        // Przenieś mapę i marker
-        if (mapInstanceRef.current && markerRef.current) {
+        // Przenieś mapę do aktualnej lokalizacji
+        if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([latitude, longitude], 17);
-          markerRef.current.setLatLng([latitude, longitude]);
         }
         
         await updateLocationFromCoordinates(latitude, longitude);
@@ -226,19 +234,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       },
       (error) => {
         console.error('Błąd geolokalizacji:', error);
-        let errorMessage = 'Nie udało się pobrać lokalizacji';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Dostęp do lokalizacji został odrzucony. Możesz wyszukać adres lub kliknąć na mapę.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Lokalizacja jest niedostępna. Możesz wyszukać adres lub kliknąć na mapę.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Przekroczono czas oczekiwania na lokalizację. Możesz wyszukać adres lub kliknąć na mapę.';
-            break;
-        }
-        alert(errorMessage);
+        alert('Nie udało się pobrać lokalizacji');
         setIsGettingLocation(false);
       },
       {
@@ -345,10 +341,29 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               )}
             </div>
             
+            {/* Stała pinezka w środku mapy */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="relative">
+                {/* Pinezka */}
+                <div className="w-8 h-8 bg-red-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-white" />
+                </div>
+                {/* Cień pinezki */}
+                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-4 h-2 bg-black bg-opacity-20 rounded-full blur-sm"></div>
+              </div>
+            </div>
+            
             {/* Instructions overlay */}
-            <div className="absolute top-4 left-4 bg-white bg-opacity-90 rounded-md p-3 shadow-lg max-w-xs">
+            <div className="absolute top-4 left-4 bg-white bg-opacity-95 rounded-lg p-3 shadow-lg max-w-xs border">
               <p className="text-xs text-gray-700">
-                💡 <strong>Wskazówka:</strong> Kliknij na mapę lub przeciągnij pinezkę, aby dokładnie określić miejsce incydentu
+                💡 <strong>Wskazówka:</strong> Przesuń mapę palcem, aby dokładnie określić miejsce incydentu. Pinezka zawsze wskazuje środek ekranu.
+              </p>
+            </div>
+            
+            {/* Zoom controls info */}
+            <div className="absolute bottom-4 right-4 bg-white bg-opacity-95 rounded-lg p-2 shadow-lg border">
+              <p className="text-xs text-gray-600">
+                📍 Przybliż/oddal dla większej dokładności
               </p>
             </div>
           </div>
