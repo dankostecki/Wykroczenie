@@ -419,11 +419,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-// Render aplikacji - dodaj na końcu pliku lub stwórz osobny main.tsx
-const root = createRoot(document.getElementById("root")!);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
