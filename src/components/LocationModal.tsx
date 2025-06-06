@@ -5,6 +5,7 @@ interface LocationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLocationSelect: (location: { address: string; coordinates: { lat: number; lng: number } }) => void;
+  userEmail?: string; // Dodany email dla identyfikacji API
 }
 
 declare global {
@@ -16,13 +17,11 @@ declare global {
 export const LocationModal: React.FC<LocationModalProps> = ({
   isOpen,
   onClose,
-  onLocationSelect
+  onLocationSelect,
+  userEmail
 }) => {
-  const [selectedLocation, setSelectedLocation] = useState<{
-    address: string;
-    coordinates: { lat: number; lng: number };
-  }>({
-    address: 'Przesuwaj mapę, aby wybrać lokalizację...',
+  const [selectedLocation, setSelectedLocation] = useState({
+    address: 'Przesuwaj mapę aby wybrać lokalizację...',
     coordinates: { lat: 52.2297, lng: 21.0122 }
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,11 +30,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [hasAutoLocalized, setHasAutoLocalized] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
-
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
-  // Ładowanie Leaflet tylko gdy modal jest otwarty
+  // Ładowanie Leaflet
   useEffect(() => {
     if (!isOpen) return;
 
@@ -44,13 +43,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         setMapLoaded(true);
         return;
       }
-      // styl CSS
+
       const cssLink = document.createElement('link');
       cssLink.rel = 'stylesheet';
       cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(cssLink);
 
-      // skrypt JS
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       script.onload = () => setMapLoaded(true);
@@ -60,17 +58,17 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     loadLeaflet();
   }, [isOpen]);
 
-  // Inicjalizacja/odświeżenie mapy
+  // Inicjalizacja mapy
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
 
-    // Jeśli już jest instancja mapy, usuń ją (np. przy ponownym otwarciu modalu)
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
 
     const { lat, lng } = selectedLocation.coordinates;
+
     const map = window.L.map(mapRef.current, {
       zoomControl: true,
       attributionControl: true
@@ -86,13 +84,14 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
         updateLocationFromCoordinates(lat, lng);
-      }, 1000);
+      }, 1000); // Zwiększony timeout dla stabilności
     };
 
     map.on('moveend', () => {
       const center = map.getCenter();
       debouncedReverseGeocode(center.lat, center.lng);
     });
+
     map.on('zoomend', () => {
       const center = map.getCenter();
       debouncedReverseGeocode(center.lat, center.lng);
@@ -100,7 +99,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
     mapInstanceRef.current = map;
 
-    // Przy pierwszym renderze automatycznie próbuj geolokalizacji użytkownika
     if (!hasAutoLocalized) {
       setHasAutoLocalized(true);
       setTimeout(() => {
@@ -109,21 +107,24 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [mapLoaded, isOpen]);
 
-  // Reset stanu przy zamknięciu modalu
+  // Reset przy zamknięciu
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery('');
       setSelectedLocation({
-        address: 'Przesuwaj mapę, aby wybrać lokalizację...',
+        address: 'Przesuwaj mapę aby wybrać lokalizację...',
         coordinates: { lat: 52.2297, lng: 21.0122 }
       });
       setHasAutoLocalized(false);
       setMapLoaded(false);
       setIsLoadingAddress(false);
+      
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -131,107 +132,95 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   }, [isOpen]);
 
-  // Funkcja reverse-geocoding, która zawsze próbuje wydobyć ulicę, nr domu i miejscowość
+  // Nominatim reverse geocoding z email identyfikacją
   const updateLocationFromCoordinates = async (lat: number, lng: number) => {
-    console.log('🔍 Reverse geocoding dla:', lat, lng);
+    console.log('🔍 Nominatim reverse geocoding dla:', lat, lng);
     setIsLoadingAddress(true);
-
+    
     try {
-      // Najpierw ustaw stan z “Pobieranie...” by dać feedback użytkownikowi
       setSelectedLocation(prev => ({
         ...prev,
         coordinates: { lat, lng },
         address: 'Pobieranie adresu...'
       }));
 
-      // PRÓBA 1: geocoding BigDataCloud (może nie zawierać szczegółów ulicy)
-      try {
-        console.log('🔄 Próba BigDataCloud API...');
-        const resp1 = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`
-        );
-        if (resp1.ok) {
-          const data1 = await resp1.json();
-          console.log('📊 BigDataCloud data:', data1);
-          // BigDataCloud zwraca locality, city, principalSubdivision – nie ma szczegółów ulicy/num domu
-          if (data1 && (data1.locality || data1.city || data1.principalSubdivision)) {
-            const parts1: string[] = [];
-            // Nazwa dzielnicy lub osiedla (jeśli jest i różni się od city)
-            if (data1.locality && data1.locality !== data1.city) {
-              parts1.push(data1.locality);
+      // Używamy email użytkownika do identyfikacji (Nominatim policy)
+      const email = userEmail || 'wykroczenie@app.com';
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl&email=${encodeURIComponent(email)}`;
+      
+      console.log('🌐 Nominatim URL:', nominatimUrl);
+      
+      const response = await fetch(nominatimUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📊 Nominatim data:', data);
+        
+        if (data && !data.error && data.display_name) {
+          // Formatuj adres z polskimi szczegółami
+          let formattedAddress = data.display_name;
+          
+          if (data.address) {
+            const parts = [];
+            
+            // Numer domu i ulica - najważniejsze
+            if (data.address.house_number && data.address.road) {
+              parts.push(`${data.address.road} ${data.address.house_number}`);
+            } else if (data.address.road) {
+              parts.push(data.address.road);
             }
-            // Wypisz miasto lub województwo
-            if (data1.city) {
-              parts1.push(data1.city);
-            } else if (data1.principalSubdivision) {
-              parts1.push(data1.principalSubdivision);
+            
+            // Dzielnica/osiedle
+            if (data.address.city_district || data.address.suburb || data.address.neighbourhood) {
+              parts.push(data.address.city_district || data.address.suburb || data.address.neighbourhood);
             }
-            const formatted1 = parts1.length > 0 ? parts1.join(', ') : data1.locality || 'Nieznana lokalizacja';
-            console.log('✅ BigDataCloud sukces:', formatted1);
-            setSelectedLocation({
-              address: formatted1,
-              coordinates: { lat, lng }
-            });
-            setIsLoadingAddress(false);
-            return;
+            
+            // Miasto
+            if (data.address.city || data.address.town || data.address.village) {
+              parts.push(data.address.city || data.address.town || data.address.village);
+            }
+            
+            if (parts.length > 0) {
+              formattedAddress = parts.join(', ');
+            }
           }
-        }
-      } catch (err) {
-        console.log('❌ BigDataCloud nie powiodło się:', err);
-      }
-
-      // PRÓBA 2: geocode.maps.co – tu pobieramy ulice, nr domu i miejscowość
-      try {
-        console.log('🔄 Próba geocode.maps.co API...');
-        const resp2 = await fetch(
-          `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`
-        );
-        if (resp2.ok) {
-          const data2 = await resp2.json();
-          console.log('📊 geocode.maps.co data:', data2);
-          if (data2 && data2.address) {
-            const addr = data2.address;
-            // Zbuduj adres w postaci: “ulica nr_dom, miejscowość”
-            const parts2: string[] = [];
-            if (addr.road) {
-              if (addr.house_number) {
-                parts2.push(`${addr.road} ${addr.house_number}`);
-              } else {
-                parts2.push(addr.road);
-              }
-            }
-            // Jeśli jest miejscowość (city/town/village)
-            const town = addr.city || addr.town || addr.village;
-            if (town) {
-              parts2.push(town);
-            }
-            // Jeśli nie udało się zebrać ani ulicy, ani miasta, użyj display_name jako fallback
-            let formatted2 = parts2.length > 0 ? parts2.join(', ') : data2.display_name || 'Nieznana lokalizacja';
-            console.log('✅ geocode.maps.co sukces:', formatted2);
-            setSelectedLocation({
-              address: formatted2,
-              coordinates: { lat, lng }
-            });
-            setIsLoadingAddress(false);
-            return;
+          
+          // Ogranicz długość dla czytelności
+          if (formattedAddress.length > 100) {
+            const parts = formattedAddress.split(',').slice(0, 3);
+            formattedAddress = parts.join(',').trim();
           }
+          
+          console.log('✅ Nominatim sukces:', formattedAddress);
+          
+          setSelectedLocation({
+            address: formattedAddress,
+            coordinates: { lat, lng }
+          });
+          return;
+        } else if (data.error) {
+          console.log('❌ Nominatim error:', data.error);
         }
-      } catch (err) {
-        console.log('❌ geocode.maps.co nie powiodło się:', err);
+      } else {
+        console.log('❌ Nominatim HTTP error:', response.status, response.statusText);
       }
-
-      // Fallback: jeśli nic nie zadziałało, wyświetl same współrzędne
-      console.log('🔧 Fallback: wyświetlam same współrzędne');
-      const fallbackAddr = `📍 ${lat.toFixed(5)}°, ${lng.toFixed(5)}°`;
+      
+      // Fallback - współrzędne
+      console.log('🔧 Fallback do współrzędnych');
+      const fallbackAddress = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+      
       setSelectedLocation({
-        address: fallbackAddr,
+        address: fallbackAddress,
         coordinates: { lat, lng }
       });
+      
     } catch (err) {
-      console.error('❌ Błąd w reverse geocoding:', err);
-      const fallbackAddr = `📍 ${lat.toFixed(5)}°, ${lng.toFixed(5)}°`;
+      console.error('❌ Nominatim błąd:', err);
+      
+      // Fallback - współrzędne
+      const fallbackAddress = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
       setSelectedLocation({
-        address: fallbackAddr,
+        address: fallbackAddress,
         coordinates: { lat, lng }
       });
     } finally {
@@ -239,73 +228,104 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   };
 
-  // Funkcja wyszukiwania adresu po wpisaniu
+  // Nominatim search z email identyfikacją
   const searchLocation = async () => {
     if (!searchQuery.trim()) return;
+    
     setIsSearching(true);
     try {
-      console.log('🔍 Wyszukiwanie:', searchQuery);
-      const resp = await fetch(
-        `https://geocode.maps.co/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=3&countrycodes=pl`
-      );
-      if (resp.ok) {
-        const results = await resp.json();
-        console.log('📊 Wyniki wyszukiwania:', results);
-        if (results.length > 0) {
-          const result = results[0];
+      const email = userEmail || 'wykroczenie@app.com';
+      const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=3&accept-language=pl&countrycodes=pl&addressdetails=1&email=${encodeURIComponent(email)}`;
+      
+      console.log('🔍 Nominatim search:', searchUrl);
+      const response = await fetch(searchUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📊 Nominatim search results:', data);
+        
+        if (data.length > 0) {
+          const result = data[0];
           const lat = parseFloat(result.lat);
           const lng = parseFloat(result.lon);
+          
           if (mapInstanceRef.current) {
             mapInstanceRef.current.setView([lat, lng], 18);
           }
-          // Zbuduj “krótki” adres: weź pierwsze 3 fragmenty display_name
-          let formatted = result.display_name;
-          if (formatted.includes(',')) {
-            const parts = formatted.split(',').slice(0, 3);
-            formatted = parts.join(',').trim();
+          
+          // Formatuj adres podobnie jak w reverse geocoding
+          let formattedAddress = result.display_name;
+          
+          if (result.address) {
+            const parts = [];
+            
+            if (result.address.house_number && result.address.road) {
+              parts.push(`${result.address.road} ${result.address.house_number}`);
+            } else if (result.address.road) {
+              parts.push(result.address.road);
+            }
+            
+            if (result.address.city_district || result.address.suburb) {
+              parts.push(result.address.city_district || result.address.suburb);
+            }
+            
+            if (result.address.city || result.address.town) {
+              parts.push(result.address.city || result.address.town);
+            }
+            
+            if (parts.length > 0) {
+              formattedAddress = parts.join(', ');
+            }
           }
-          if (formatted.length > 100) {
-            formatted = formatted.substring(0, 97) + '...';
+          
+          if (formattedAddress.length > 100) {
+            formattedAddress = formattedAddress.substring(0, 97) + '...';
           }
-          console.log('✅ Wyszukiwanie sukces:', formatted);
+          
+          console.log('✅ Nominatim search success:', formattedAddress);
+          
           setSelectedLocation({
-            address: formatted,
+            address: formattedAddress,
             coordinates: { lat, lng }
           });
+          
           setSearchQuery('');
         } else {
-          alert('Nie znaleziono miejsca. Spróbuj bardziej szczegółowego wyszukiwania.');
+          alert('Nie znaleziono miejsca. Spróbuj bardziej szczegółowego wyszukiwania (np. "Plac Defilad 1, Warszawa").');
         }
       } else {
-        console.log('❌ Błąd API wyszukiwania:', resp.status);
+        console.log('❌ Nominatim search error:', response.status, response.statusText);
         alert('Błąd wyszukiwania. Spróbuj ponownie.');
       }
     } catch (err) {
-      console.log('❌ Wyszukiwanie nie powiodło się:', err);
+      console.log('❌ Nominatim search failed:', err);
       alert('Błąd podczas wyszukiwania. Sprawdź połączenie internetowe.');
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Pobranie aktualnej lokalizacji użytkownika
+  // Geolokalizacja
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolokalizacja nie jest obsługiwana w tej przeglądarce.');
       return;
     }
+
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([latitude, longitude], 18);
         }
-        // Od razu ustaw “Pobieranie adresu...”
+        
         setSelectedLocation({
           address: 'Pobieranie adresu...',
           coordinates: { lat: latitude, lng: longitude }
         });
+        
         setIsGettingLocation(false);
       },
       (error) => {
@@ -313,6 +333,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         if (error.code === error.PERMISSION_DENIED) {
           message = 'Dostęp do lokalizacji został zablokowany. Możesz wyszukać adres ręcznie.';
         }
+        
         alert(message);
         setIsGettingLocation(false);
       },
@@ -324,12 +345,13 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     );
   };
 
-  // Potwierdzenie wyboru lokalizacji
+  // Potwierdzenie
   const handleConfirm = () => {
-    if (selectedLocation.address === 'Przesuwaj mapę, aby wybrać lokalizację...') {
+    if (selectedLocation.address === 'Przesuwaj mapę aby wybrać lokalizację...') {
       alert('Proszę wybrać lokalizację na mapie lub wyszukać adres');
       return;
     }
+    
     onLocationSelect(selectedLocation);
     onClose();
   };
@@ -339,10 +361,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4">
-        <div
+        <div 
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
         ></div>
+
         <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
@@ -372,6 +395,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 />
               </div>
             </div>
+            
             <div className="flex gap-2">
               <button
                 onClick={searchLocation}
@@ -403,22 +427,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Pinezka z tooltipem (pointer-events-none na wrapper, pointer-events-auto na pinie) */}
+            
+            {/* Pinezka */}
             {mapLoaded && (
-              <div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                style={{ zIndex: 1000 }}
-              >
-                <div className="relative group pointer-events-auto">
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full mb-2 px-2 py-1 bg-white border rounded text-xs text-gray-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-lg">
-                    <p className="font-medium">{selectedLocation.address}</p>
-                    <p>
-                      {selectedLocation.coordinates.lat.toFixed(5)}, {selectedLocation.coordinates.lng.toFixed(5)}
-                    </p>
-                  </div>
-                  {/* Samy pin */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000 }}>
+                <div className="relative">
                   <div className="w-8 h-8 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center transform -translate-y-4">
                     <MapPin className="w-5 h-5 text-white fill-white" />
                   </div>
@@ -427,11 +440,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Instrukcja */}
+            
+            {/* Instructions */}
             <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-md p-2 shadow-sm max-w-xs border">
               <p className="text-xs text-gray-700">
-                <span className="font-medium text-blue-600">💡</span> Przesuń mapę, aby wybrać lokalizację.
+                <span className="font-medium text-blue-600">💡</span> Przesuń mapę aby wybrać lokalizację
                 {isLoadingAddress && (
                   <span className="text-orange-600 font-medium block">⏳ Pobieranie adresu...</span>
                 )}
@@ -439,7 +452,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             </div>
           </div>
 
-          {/* Wyświetlanie adresu i współrzędnych pod mapą */}
+          {/* Address display */}
           <div className="p-3 bg-gray-50 border-t">
             <div className="bg-white rounded-md p-2 border">
               <div className="flex items-center">
@@ -469,7 +482,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={selectedLocation.address === 'Przesuwaj mapę, aby wybrać lokalizację...'}
+              disabled={selectedLocation.address === 'Przesuwaj mapę aby wybrać lokalizację...'}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center text-sm"
             >
               <Check className="w-4 h-4 mr-1" />
