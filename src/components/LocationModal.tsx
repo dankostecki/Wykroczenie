@@ -1,285 +1,374 @@
-// src/components/LocationModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { X, MapPin, Search, Navigation, Check } from 'lucide-react';
 
+interface LocationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLocationSelect: (location: { address: string; coordinates: { lat: number; lng: number } }) => void;
+  initialLocation?: {
+    address: string;
+    coordinates: { lat: number; lng: number };
+  };
+}
+
+// Leaflet będzie ładowany dynamicznie
 declare global {
   interface Window {
     L: any;
   }
 }
 
-interface Location {
-  address: string;
-  coordinates: { lat: number; lng: number };
-}
-
-interface LocationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onLocationSelect: (location: Location) => void;
-  userEmail?: string;
-}
-
 export const LocationModal: React.FC<LocationModalProps> = ({
   isOpen,
   onClose,
   onLocationSelect,
-  userEmail,
+  initialLocation
 }) => {
-  const [tempLocation, setTempLocation] = useState<Location | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState(
+    initialLocation || {
+      address: '',
+      coordinates: { lat: 52.2297, lng: 21.0122 } // Warszawa jako default
+    }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
-
+  const [mapLoaded, setMapLoaded] = useState(false);
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // 1) Wczytywanie Leaflet przy otwarciu modalu
+  // Ładowanie Leaflet CSS i JS
   useEffect(() => {
     if (!isOpen) return;
-    if (window.L) {
-      setMapLoaded(true);
-      return;
-    }
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(css);
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setMapLoaded(true);
-    document.head.appendChild(script);
+
+    const loadLeaflet = async () => {
+      // Sprawdź czy Leaflet już jest załadowany
+      if (window.L) {
+        setMapLoaded(true);
+        return;
+      }
+
+      // Dodaj CSS
+      const cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(cssLink);
+
+      // Dodaj JS
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => {
+        setMapLoaded(true);
+      };
+      document.head.appendChild(script);
+    };
+
+    loadLeaflet();
   }, [isOpen]);
 
-  // 2) Inicjalizacja mapy
+  // Inicjalizacja mapy i automatyczne pobieranie lokalizacji
   useEffect(() => {
-    if (!isOpen || !mapLoaded || !mapRef.current) return;
+    if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
 
-    // Usuń poprzednią instancję (np. przy ponownym otwarciu)
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-      markerRef.current = null;
-    }
+    const { lat, lng } = selectedLocation.coordinates;
 
-    // Domyślne centrum: jeśli mamy tymczasową, to ona, inaczej Warszawa
-    const center: [number, number] = tempLocation
-      ? [tempLocation.coordinates.lat, tempLocation.coordinates.lng]
-      : [52.2297, 21.0122];
+    // Utwórz mapę
+    const map = window.L.map(mapRef.current).setView([lat, lng], 15);
 
-    const map = window.L.map(mapRef.current).setView(center, 13);
-    window.L
-      .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-      })
-      .addTo(map);
+    // Dodaj kafelki OpenStreetMap
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-    // Jeśli jest wcześniej wybrany punkt – wrzuć marker i pozwól go przeciągnąć
-    if (tempLocation) {
-      const m = window.L
-        .marker(center, { draggable: true })
-        .addTo(map);
-      markerRef.current = m;
-      m.on('dragend', () => {
-        const pos = m.getLatLng();
-        fetchAddress(pos.lat, pos.lng);
-      });
-    }
+    // Dodaj marker
+    const marker = window.L.marker([lat, lng], {
+      draggable: true
+    }).addTo(map);
+
+    // Event listener dla przeciągania markera
+    marker.on('dragend', async (e: any) => {
+      const position = e.target.getLatLng();
+      await updateLocationFromCoordinates(position.lat, position.lng);
+    });
+
+    // Event listener dla kliknięcia na mapę
+    map.on('click', async (e: any) => {
+      const { lat, lng } = e.latlng;
+      marker.setLatLng([lat, lng]);
+      await updateLocationFromCoordinates(lat, lng);
+    });
 
     mapInstanceRef.current = map;
-  }, [isOpen, mapLoaded]);
+    markerRef.current = marker;
 
-  // 3) pomocnicza: umieść/poprzesuwaj marker
-  const placeMarker = (lat: number, lng: number) => {
-    if (!mapInstanceRef.current) return;
-    mapInstanceRef.current.setView([lat, lng], 16);
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      const m = window.L
-        .marker([lat, lng], { draggable: true })
-        .addTo(mapInstanceRef.current);
-      markerRef.current = m;
-      m.on('dragend', () => {
-        const pos = m.getLatLng();
-        fetchAddress(pos.lat, pos.lng);
+    // Automatycznie pobierz lokalizację gdy mapa się załaduje
+    setTimeout(() => {
+      getCurrentLocation();
+    }, 500);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [mapLoaded]);
+
+  // Aktualizacja lokalizacji na podstawie współrzędnych
+  const updateLocationFromCoordinates = async (lat: number, lng: number) => {
+    try {
+      const address = await reverseGeocode(lat, lng);
+      setSelectedLocation({
+        address,
+        coordinates: { lat, lng }
+      });
+    } catch (error) {
+      console.error('Błąd reverse geocoding:', error);
+      setSelectedLocation({
+        address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+        coordinates: { lat, lng }
       });
     }
-    fetchAddress(lat, lng);
   };
 
-  // 4) Reverse‐geocoding z Nominatim
-  const fetchAddress = async (lat: number, lng: number) => {
-    setIsLoadingAddress(true);
+  // Reverse geocoding
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     try {
-      const email = userEmail || 'example@app.com';
-      const url =
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}` +
-        `&addressdetails=1&accept-language=pl&email=${encodeURIComponent(email)}`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Nominatim błędny status');
-      const data = await resp.json();
-      let formatted = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl`
+      );
+      
+      if (!response.ok) throw new Error('API error');
+      
+      const data = await response.json();
+      
+      // Formatuj adres z dokładnymi szczegółami
+      const parts = [];
       if (data.address) {
-        const a = data.address as any;
-        const parts: string[] = [];
-        if (a.road) {
-          const r = a.house_number
-            ? `${a.road} ${a.house_number}`
-            : a.road;
-          parts.push(r);
+        if (data.address.house_number) parts.push(data.address.house_number);
+        if (data.address.road) parts.push(data.address.road);
+        if (data.address.city_district) parts.push(data.address.city_district);
+        if (data.address.city || data.address.town || data.address.village) {
+          parts.push(data.address.city || data.address.town || data.address.village);
         }
-        const town = a.city || a.town || a.village || a.hamlet;
-        if (town) parts.push(town);
-        if (a.state) parts.push(a.state);
-        if (parts.length > 0) formatted = parts.join(', ');
-        else if (data.display_name) formatted = data.display_name;
       }
-      setTempLocation({ address: formatted, coordinates: { lat, lng } });
-    } catch {
-      setTempLocation({ address: `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`, coordinates: { lat, lng } });
-    } finally {
-      setIsLoadingAddress(false);
+      
+      return parts.length > 0 
+        ? parts.join(', ') 
+        : data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    } catch (error) {
+      throw new Error('Geocoding failed');
     }
   };
 
-  // 5) Geocoding z wpisanego adresu
-  const searchByAddress = async () => {
+  // Wyszukiwanie miejsca
+  const searchLocation = async () => {
     if (!searchQuery.trim()) return;
+    
     setIsSearching(true);
     try {
-      const email = userEmail || 'example@app.com';
-      const url =
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}` +
-        `&limit=1&addressdetails=1&accept-language=pl&countrycodes=pl&email=${encodeURIComponent(email)}`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error();
-      const results = await resp.json();
-      if (results.length) {
-        const r = results[0];
-        const lat = parseFloat(r.lat);
-        const lng = parseFloat(r.lon);
-        placeMarker(lat, lng);
-        setSearchQuery('');
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&accept-language=pl&countrycodes=pl`
+      );
+      
+      if (!response.ok) throw new Error('Search API error');
+      
+      const data = await response.json();
+      if (data.length > 0) {
+        const result = data[0];
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        
+        // Przenieś mapę i marker
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.setView([lat, lng], 17);
+          markerRef.current.setLatLng([lat, lng]);
+        }
+        
+        setSelectedLocation({
+          address: result.display_name,
+          coordinates: { lat, lng }
+        });
       } else {
-        alert('Nie znaleziono adresu. Spróbuj inaczej.');
+        alert('Nie znaleziono miejsca. Spróbuj innego wyszukiwania.');
       }
-    } catch {
-      alert('Błąd wyszukiwania. Sprawdź Internet.');
+    } catch (error) {
+      console.error('Błąd wyszukiwania:', error);
+      alert('Błąd podczas wyszukiwania. Spróbuj ponownie.');
     } finally {
       setIsSearching(false);
     }
   };
 
-  // 6) Geolokalizacja przeglądarki
-  const locateUser = () => {
+  // Pobierz aktualną lokalizację
+  const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Brak wsparcia geolokalizacji.');
+      alert('Geolokalizacja nie jest obsługiwana w tej przeglądarce');
       return;
     }
+
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        placeMarker(pos.coords.latitude, pos.coords.longitude);
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Przenieś mapę i marker
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.setView([latitude, longitude], 17);
+          markerRef.current.setLatLng([latitude, longitude]);
+        }
+        
+        await updateLocationFromCoordinates(latitude, longitude);
         setIsGettingLocation(false);
       },
-      () => {
-        alert('Nie udało się pobrać lokalizacji.');
+      (error) => {
+        console.error('Błąd geolokalizacji:', error);
+        let errorMessage = 'Nie udało się pobrać lokalizacji';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Dostęp do lokalizacji został odrzucony. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Lokalizacja jest niedostępna. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Przekroczono czas oczekiwania na lokalizację. Możesz wyszukać adres lub kliknąć na mapę.';
+            break;
+        }
+        alert(errorMessage);
         setIsGettingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
     );
   };
 
-  // 7) Potwierdzenie / anulowanie
-  const confirm = () => {
-    if (!tempLocation) {
-      alert('Wybierz najpierw lokalizację.');
-      return;
-    }
-    onLocationSelect(tempLocation);
-    onClose();
-  };
-  const cancel = () => {
-    setTempLocation(null);
-    setSearchQuery('');
+  // Potwierdzenie wyboru lokalizacji
+  const handleConfirm = () => {
+    onLocationSelect(selectedLocation);
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b">
-          <h3 className="text-lg font-medium">📍 Wybierz lokalizację</h3>
-          <button onClick={cancel} className="p-1 hover:bg-gray-100 rounded-full">
-            ✕
-          </button>
-        </div>
-        {/* Body */}
-        <div className="p-4 space-y-4">
-          {/* Adres ręcznie */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">Adres ręcznie:</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && searchByAddress()}
-                placeholder="np. Plac Defilad 1, Warszawa"
-                className="flex-1 px-3 py-2 border rounded focus:outline-none"
-              />
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Overlay */}
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+          onClick={onClose}
+        ></div>
+
+        {/* Modal */}
+        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Wybierz dokładną lokalizację</h3>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Search bar */}
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            {/* Search input - szeroki nad przyciskami */}
+            <div className="mb-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
+                  placeholder="Wyszukaj adres (np. ul. Marszałkowska 1, Warszawa)"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            {/* Przyciski akcji */}
+            <div className="flex gap-2 mb-3">
               <button
-                onClick={searchByAddress}
+                onClick={searchLocation}
                 disabled={isSearching || !searchQuery.trim()}
-                className="px-4 bg-blue-600 text-white rounded disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {isSearching ? '…' : 'Szukaj'}
+                {isSearching ? 'Wyszukuję...' : 'Wyszukaj'}
+              </button>
+              <button
+                onClick={getCurrentLocation}
+                disabled={isGettingLocation}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+              >
+                <Navigation className="w-4 h-4 mr-1" />
+                {isGettingLocation ? 'Lokalizuję...' : 'Moja lokalizacja'}
               </button>
             </div>
-          </div>
-          {/* Moja lokalizacja */}
-          <button
-            onClick={locateUser}
-            disabled={isGettingLocation}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
-          >
-            {isGettingLocation ? 'GPS…' : 'Moja lokalizacja'}
-          </button>
-          {/* Mapa */}
-          <div className="h-64 bg-gray-100 relative">
-            {!mapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                Ładowanie mapy…
+            
+            {/* Current address display */}
+            <div className="bg-white rounded-md p-3 border">
+              <div className="flex items-start">
+                <MapPin className="w-4 h-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">Wybrana lokalizacja:</p>
+                  <p className="text-sm text-gray-600 mt-1">{selectedLocation.address}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Współrzędne: {selectedLocation.coordinates.lat.toFixed(6)}, {selectedLocation.coordinates.lng.toFixed(6)}
+                  </p>
+                </div>
               </div>
-            )}
-            <div ref={mapRef} className="w-full h-full"></div>
+            </div>
           </div>
-          {/* Podsumowanie adresu */}
-          <div className="p-3 bg-gray-50 border rounded">
-            {isLoadingAddress
-              ? '⏳ Pobieranie adresu…'
-              : tempLocation?.address || 'Brak lokalizacji'}
+
+          {/* Map container */}
+          <div className="relative" style={{ height: '400px' }}>
+            <div ref={mapRef} className="w-full h-full">
+              {!mapLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600">Ładowanie mapy...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Instructions overlay */}
+            <div className="absolute top-4 left-4 bg-white bg-opacity-90 rounded-md p-3 shadow-lg max-w-xs">
+              <p className="text-xs text-gray-700">
+                💡 <strong>Wskazówka:</strong> Kliknij na mapę lub przeciągnij pinezkę, aby dokładnie określić miejsce incydentu
+              </p>
+            </div>
           </div>
-        </div>
-        {/* Footer */}
-        <div className="flex justify-end gap-2 p-3 border-t">
-          <button onClick={cancel} className="px-4 py-2 border rounded">
-            Anuluj
-          </button>
-          <button
-            onClick={confirm}
-            disabled={!tempLocation}
-            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-          >
-            Potwierdź
-          </button>
+
+          {/* Footer */}
+          <div className="flex justify-between items-center p-4 border-t border-gray-200 bg-gray-50">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Potwierdź lokalizację
+            </button>
+          </div>
         </div>
       </div>
     </div>
