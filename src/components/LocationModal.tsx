@@ -5,10 +5,6 @@ interface LocationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLocationSelect: (location: { address: string; coordinates: { lat: number; lng: number } }) => void;
-  initialLocation?: {
-    address: string;
-    coordinates: { lat: number; lng: number };
-  };
 }
 
 // Leaflet będzie ładowany dynamicznie
@@ -21,19 +17,17 @@ declare global {
 export const LocationModal: React.FC<LocationModalProps> = ({
   isOpen,
   onClose,
-  onLocationSelect,
-  initialLocation
+  onLocationSelect
 }) => {
-  const [selectedLocation, setSelectedLocation] = useState(
-    initialLocation || {
-      address: '',
-      coordinates: { lat: 52.2297, lng: 21.0122 } // Warszawa jako default
-    }
-  );
+  const [selectedLocation, setSelectedLocation] = useState({
+    address: 'Przesuwaj mapę aby wybrać lokalizację...',
+    coordinates: { lat: 52.2297, lng: 21.0122 } // Warszawa jako default
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [hasAutoLocalized, setHasAutoLocalized] = useState(false);
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -67,22 +61,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     loadLeaflet();
   }, [isOpen]);
 
-  // Aktualizuj lokalizację gdy initialLocation się zmieni
-  useEffect(() => {
-    if (initialLocation && isOpen) {
-      setSelectedLocation(initialLocation);
-      setSearchQuery(''); // Wyczyść search gdy otwieramy z nową lokalizacją
-    }
-  }, [initialLocation, isOpen]);
-
-  // Aktualizuj mapę gdy selectedLocation się zmieni (dla edycji)
-  useEffect(() => {
-    if (mapInstanceRef.current && mapLoaded) {
-      const { lat, lng } = selectedLocation.coordinates;
-      mapInstanceRef.current.setView([lat, lng], 17);
-    }
-  }, [selectedLocation, mapLoaded]);
-
   // Inicjalizacja mapy i automatyczne pobieranie lokalizacji
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
@@ -90,44 +68,47 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     const { lat, lng } = selectedLocation.coordinates;
 
     // Utwórz mapę
-    const map = window.L.map(mapRef.current).setView([lat, lng], 15);
+    const map = window.L.map(mapRef.current, {
+      zoomControl: true,
+      attributionControl: true
+    }).setView([lat, lng], 13);
 
     // Dodaj kafelki OpenStreetMap
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
     }).addTo(map);
 
-    // Event listener dla przesuwania mapy - aktualizuj lokalizację na podstawie centrum
-    map.on('moveend', async () => {
+    // Funkcja debounce dla lepszej wydajności
+    let timeoutId: NodeJS.Timeout;
+    const debouncedReverseGeocode = (lat: number, lng: number) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        updateLocationFromCoordinates(lat, lng);
+      }, 500); // 500ms opóźnienie
+    };
+
+    // Event listener dla zakończenia przesuwania mapy
+    map.on('moveend', () => {
       const center = map.getCenter();
-      await updateLocationFromCoordinates(center.lat, center.lng);
+      debouncedReverseGeocode(center.lat, center.lng);
     });
 
-    // Event listener dla zoomowania - też aktualizuj lokalizację  
-    map.on('zoomend', async () => {
+    // Event listener dla zoomowania
+    map.on('zoomend', () => {
       const center = map.getCenter();
-      await updateLocationFromCoordinates(center.lat, center.lng);
-    });
-
-    // Dodaj też event dla każdego ruchu mapy (bardziej responsywne)
-    map.on('move', () => {
-      const center = map.getCenter();
-      // Aktualizuj współrzędne bez reverse geocoding dla płynności
-      setSelectedLocation(prev => ({
-        ...prev,
-        coordinates: { lat: center.lat, lng: center.lng }
-      }));
+      debouncedReverseGeocode(center.lat, center.lng);
     });
 
     mapInstanceRef.current = map;
-    // Nie potrzebujemy markerRef - pinezka będzie w CSS
 
-    // Automatycznie pobierz lokalizację gdy mapa się załaduje, ale tylko jeśli nie mamy initialLocation
-    setTimeout(() => {
-      if (!initialLocation) {
+    // Automatyczne pobieranie lokalizacji przy pierwszym otwarciu
+    if (!hasAutoLocalized) {
+      setHasAutoLocalized(true);
+      setTimeout(() => {
         getCurrentLocation();
-      }
-    }, 500);
+      }, 1000); // Daj czas na załadowanie mapy
+    }
 
     return () => {
       if (mapInstanceRef.current) {
@@ -137,12 +118,54 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     };
   }, [mapLoaded]);
 
+  // Reset stanu przy zamknięciu
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('');
+      setSelectedLocation({
+        address: 'Przesuwaj mapę aby wybrać lokalizację...',
+        coordinates: { lat: 52.2297, lng: 21.0122 }
+      });
+      setHasAutoLocalized(false);
+    }
+  }, [isOpen]);
+
   // Aktualizacja lokalizacji na podstawie współrzędnych
   const updateLocationFromCoordinates = async (lat: number, lng: number) => {
     try {
-      const address = await reverseGeocode(lat, lng);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl`
+      );
+      
+      if (!response.ok) throw new Error('API error');
+      
+      const data = await response.json();
+      
+      // Formatuj adres z polskimi szczegółami
+      const parts = [];
+      if (data.address) {
+        // Numer domu i ulica
+        if (data.address.house_number && data.address.road) {
+          parts.push(`${data.address.road} ${data.address.house_number}`);
+        } else if (data.address.road) {
+          parts.push(data.address.road);
+        }
+        
+        // Dzielnica/osiedle
+        if (data.address.city_district || data.address.suburb) {
+          parts.push(data.address.city_district || data.address.suburb);
+        }
+        
+        // Miasto
+        if (data.address.city || data.address.town || data.address.village) {
+          parts.push(data.address.city || data.address.town || data.address.village);
+        }
+      }
+      
+      const formattedAddress = parts.length > 0 ? parts.join(', ') : data.display_name;
+      
       setSelectedLocation({
-        address,
+        address: formattedAddress,
         coordinates: { lat, lng }
       });
     } catch (error) {
@@ -154,36 +177,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   };
 
-  // Reverse geocoding
-  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=pl`
-      );
-      
-      if (!response.ok) throw new Error('API error');
-      
-      const data = await response.json();
-      
-      // Formatuj adres z dokładnymi szczegółami
-      const parts = [];
-      if (data.address) {
-        if (data.address.house_number) parts.push(data.address.house_number);
-        if (data.address.road) parts.push(data.address.road);
-        if (data.address.city_district) parts.push(data.address.city_district);
-        if (data.address.city || data.address.town || data.address.village) {
-          parts.push(data.address.city || data.address.town || data.address.village);
-        }
-      }
-      
-      return parts.length > 0 
-        ? parts.join(', ') 
-        : data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    } catch (error) {
-      throw new Error('Geocoding failed');
-    }
-  };
-
   // Wyszukiwanie miejsca
   const searchLocation = async () => {
     if (!searchQuery.trim()) return;
@@ -191,7 +184,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&accept-language=pl&countrycodes=pl`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&accept-language=pl&countrycodes=pl&addressdetails=1`
       );
       
       if (!response.ok) throw new Error('Search API error');
@@ -207,16 +200,36 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           mapInstanceRef.current.setView([lat, lng], 17);
         }
         
+        // Formatuj adres
+        const parts = [];
+        if (result.address) {
+          if (result.address.house_number && result.address.road) {
+            parts.push(`${result.address.road} ${result.address.house_number}`);
+          } else if (result.address.road) {
+            parts.push(result.address.road);
+          }
+          
+          if (result.address.city_district || result.address.suburb) {
+            parts.push(result.address.city_district || result.address.suburb);
+          }
+          
+          if (result.address.city || result.address.town) {
+            parts.push(result.address.city || result.address.town);
+          }
+        }
+        
         setSelectedLocation({
-          address: result.display_name,
+          address: parts.length > 0 ? parts.join(', ') : result.display_name,
           coordinates: { lat, lng }
         });
+        
+        setSearchQuery(''); // Wyczyść pole wyszukiwania po sukcesie
       } else {
-        alert('Nie znaleziono miejsca. Spróbuj innego wyszukiwania.');
+        alert('Nie znaleziono miejsca. Spróbuj bardziej szczegółowego wyszukiwania.');
       }
     } catch (error) {
       console.error('Błąd wyszukiwania:', error);
-      alert('Błąd podczas wyszukiwania. Spróbuj ponownie.');
+      alert('Błąd podczas wyszukiwania. Sprawdź połączenie internetowe.');
     } finally {
       setIsSearching(false);
     }
@@ -225,31 +238,44 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Pobierz aktualną lokalizację
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolokalizacja nie jest obsługiwana');
+      alert('Geolokalizacja nie jest obsługiwana w tej przeglądarce');
       return;
     }
 
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords;
         
-        // Przenieś mapę do aktualnej lokalizacji
+        // Przenieś mapę do aktualnej lokalizacji z wysokim zoomem
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([latitude, longitude], 17);
         }
         
-        await updateLocationFromCoordinates(latitude, longitude);
+        // Aktualizuj lokalizację - reverse geocoding zostanie wywołany automatycznie
+        setSelectedLocation(prev => ({
+          ...prev,
+          coordinates: { lat: latitude, lng: longitude }
+        }));
+        
         setIsGettingLocation(false);
       },
       (error) => {
         console.error('Błąd geolokalizacji:', error);
-        alert('Nie udało się pobrać lokalizacji');
+        
+        let message = 'Nie udało się pobrać lokalizacji.';
+        if (error.code === error.PERMISSION_DENIED) {
+          message = 'Dostęp do lokalizacji został zablokowany. Możesz wyszukać adres ręcznie.';
+        } else if (error.code === error.TIMEOUT) {
+          message = 'Przekroczono czas oczekiwania na lokalizację. Spróbuj ponownie.';
+        }
+        
+        alert(message);
         setIsGettingLocation(false);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 60000
       }
     );
@@ -257,6 +283,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
   // Potwierdzenie wyboru lokalizacji
   const handleConfirm = () => {
+    if (selectedLocation.address === 'Przesuwaj mapę aby wybrać lokalizację...') {
+      alert('Proszę wybrać lokalizację na mapie lub wyszukać adres');
+      return;
+    }
+    
     onLocationSelect(selectedLocation);
     onClose();
   };
@@ -275,11 +306,14 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         {/* Modal */}
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Wybierz dokładną lokalizację</h3>
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">📍 Wybierz lokalizację</h3>
+              <p className="text-sm text-gray-600 mt-1">Przesuń mapę lub wyszukaj adres</p>
+            </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-white hover:bg-opacity-50 rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
@@ -287,7 +321,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
           {/* Search bar */}
           <div className="p-4 border-b border-gray-200 bg-gray-50">
-            {/* Search input - szeroki nad przyciskami */}
+            {/* Search input */}
             <div className="mb-3">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -298,43 +332,29 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
-                  placeholder="Wyszukaj adres (np. ul. Marszałkowska 1, Warszawa)"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Wpisz adres (np. Plac Defilad 1, Warszawa)"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
             </div>
             
             {/* Przyciski akcji */}
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2">
               <button
                 onClick={searchLocation}
                 disabled={isSearching || !searchQuery.trim()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                {isSearching ? 'Wyszukuję...' : 'Wyszukaj'}
+                {isSearching ? 'Wyszukuję...' : 'Wyszukaj adres'}
               </button>
               <button
                 onClick={getCurrentLocation}
                 disabled={isGettingLocation}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center text-sm font-medium"
               >
                 <Navigation className="w-4 h-4 mr-1" />
                 {isGettingLocation ? 'Lokalizuję...' : 'Moja lokalizacja'}
               </button>
-            </div>
-            
-            {/* Current address display */}
-            <div className="bg-white rounded-md p-3 border">
-              <div className="flex items-start">
-                <MapPin className="w-4 h-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">Wybrana lokalizacja:</p>
-                  <p className="text-sm text-gray-600 mt-1">{selectedLocation.address}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Współrzędne: {selectedLocation.coordinates.lat.toFixed(6)}, {selectedLocation.coordinates.lng.toFixed(6)}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -351,39 +371,51 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               )}
             </div>
             
-            {/* Stała pinezka w środku mapy */}
+            {/* Stała pinezka w środku mapy - Uber style */}
             {mapLoaded && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000 }}>
                 <div className="relative">
-                  {/* Pinezka - większa i bardziej widoczna */}
-                  <div className="w-12 h-12 bg-red-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transform -translate-y-6">
+                  {/* Animowana pinezka */}
+                  <div className="w-12 h-12 bg-red-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transform -translate-y-6 hover:scale-110 transition-transform">
                     <MapPin className="w-7 h-7 text-white fill-white" />
                   </div>
-                  {/* Cień pinezki */}
-                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-8 h-4 bg-black bg-opacity-40 rounded-full blur-md"></div>
-                  {/* Punkt w środku dla precyzji */}
-                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
+                  {/* Pulsujący cień */}
+                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-8 h-4 bg-black bg-opacity-40 rounded-full blur-md animate-pulse"></div>
+                  {/* Punkt precyzji */}
+                  <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
                 </div>
               </div>
             )}
             
             {/* Instructions overlay */}
-            <div className="absolute top-4 left-4 bg-white bg-opacity-95 rounded-lg p-3 shadow-lg max-w-xs border">
+            <div className="absolute top-4 left-4 bg-white bg-opacity-95 rounded-lg p-3 shadow-lg max-w-sm border">
               <p className="text-xs text-gray-700">
-                💡 <strong>Wskazówka:</strong> Przesuń mapę palcem, aby dokładnie określić miejsce incydentu. Pinezka zawsze wskazuje środek ekranu.
-              </p>
-            </div>
-            
-            {/* Zoom controls info */}
-            <div className="absolute bottom-4 right-4 bg-white bg-opacity-95 rounded-lg p-2 shadow-lg border">
-              <p className="text-xs text-gray-600">
-                📍 Przybliż/oddal dla większej dokładności
+                <span className="font-semibold text-blue-600">💡 Jak używać:</span><br />
+                • Przesuń mapę palcem/myszą<br />
+                • Pinezka zawsze wskazuje środek<br />
+                • Zoom dla większej dokładności
               </p>
             </div>
           </div>
 
+          {/* Current address display */}
+          <div className="p-4 bg-gray-50 border-t">
+            <div className="bg-white rounded-md p-3 border">
+              <div className="flex items-start">
+                <MapPin className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">Wybrana lokalizacja:</p>
+                  <p className="text-sm text-gray-600 mt-1 leading-relaxed">{selectedLocation.address}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Współrzędne: {selectedLocation.coordinates.lat.toFixed(6)}, {selectedLocation.coordinates.lng.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Footer */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center p-4 border-t border-gray-200 bg-white">
             <button
               onClick={onClose}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -392,7 +424,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             </button>
             <button
               onClick={handleConfirm}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
+              disabled={selectedLocation.address === 'Przesuwaj mapę aby wybrać lokalizację...'}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
             >
               <Check className="w-4 h-4 mr-2" />
               Potwierdź lokalizację
