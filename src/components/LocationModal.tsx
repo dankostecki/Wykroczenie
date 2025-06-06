@@ -165,7 +165,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               return response;
             }
             throw new Error(`HTTP ${response.status}`);
-          } catch (error) {
+          } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
             console.log(`❌ Próba ${i + 1} nieudana:`, error);
             if (i === retries - 1) throw error;
             // Opóźnienie przed kolejną próbą
@@ -234,7 +235,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           });
           return;
         }
-      } catch (error) {
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
         if (error.message === 'Request cancelled') return;
         console.log('❌ BigDataCloud failed:', error);
       }
@@ -295,7 +297,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           });
           return;
         }
-      } catch (error) {
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
         if (error.message === 'Request cancelled') return;
         console.log('❌ geocode.maps.co failed:', error);
       }
@@ -327,14 +330,16 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           });
           return;
         }
-      } catch (error) {
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
         if (error.message === 'Request cancelled') return;
         console.log('❌ Nominatim failed:', error);
       }
       
       throw new Error('Wszystkie API zawiodły');
       
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
       if (error.message === 'Request cancelled') return;
       
       console.error('❌ Błąd reverse geocoding - używam fallback:', error);
@@ -398,7 +403,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           alert('Nie znaleziono miejsca. Spróbuj bardziej szczegółowego wyszukiwania.');
         }
       }
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.log('Search error:', error);
       alert('Błąd podczas wyszukiwania. Sprawdź połączenie internetowe.');
     } finally {
       setIsSearching(false);
