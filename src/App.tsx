@@ -67,9 +67,6 @@ const useGoogleAuth = () => {
             cancel_on_tap_outside: false, // Nie anuluje przy kliknięciu poza
           });
           
-          // Wyłącz automatyczne wybieranie konta
-          window.google.accounts.id.disableAutoSelect();
-          
           // Sprawdź czy użytkownik jest już zalogowany
           const token = localStorage.getItem('google_token');
           if (token) {
@@ -204,36 +201,6 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loading }) =>
     }
   }, [loading]);
 
-  // Funkcja do wymuszenia wyboru konta
-  const forceAccountSelection = () => {
-    if (window.google?.accounts?.id) {
-      // Reset Google One Tap
-      window.google.accounts.id.disableAutoSelect();
-      
-      // Wyczyść button i przerenderuj z wymuszeniem wyboru konta
-      if (googleButtonRef.current) {
-        googleButtonRef.current.innerHTML = '';
-        
-        // Render nowy button z wymuszeniem wyboru konta
-        setTimeout(() => {
-          if (window.google?.accounts?.id && googleButtonRef.current) {
-            window.google.accounts.id.renderButton(googleButtonRef.current, {
-              theme: "outline",
-              size: "large", 
-              width: "100%",
-              text: "signin_with",
-              shape: "rounded",
-              locale: "pl"
-            });
-          }
-        }, 100);
-      }
-      
-      // Trigger prompt z wymuszeniem wyboru
-      window.google.accounts.id.prompt();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
@@ -245,16 +212,6 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loading }) =>
         <div className="space-y-4">
           {/* Google Sign-In Button */}
           <div ref={googleButtonRef} className="w-full flex justify-center"></div>
-          
-          {/* Link do wyboru innego konta */}
-          <div className="text-center">
-            <button
-              onClick={forceAccountSelection}
-              className="text-sm text-blue-600 hover:text-blue-700 underline"
-            >
-              Zaloguj się innym kontem
-            </button>
-          </div>
         </div>
         
         <div className="mt-6 text-center">
