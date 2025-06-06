@@ -12,12 +12,11 @@ interface EvidenceCollectorProps {
 
 export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSignOut }) => {
   const [files, setFiles] = useState<MediaFile[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [currentStep, setCurrentStep] = useState<'evidence' | 'report'>('evidence');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Hook do Google Drive upload
   const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
@@ -76,11 +75,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     if (videoInputRef.current) {
       videoInputRef.current.click();
     }
-  };
-
-  // Funkcja do zatrzymywania nagrywania - już nie potrzebna
-  const stopVideoRecording = () => {
-    // Nie potrzebna - natywna kamera się sama zatrzymuje
   };
 
   // Funkcja do wybierania plików z urządzenia
