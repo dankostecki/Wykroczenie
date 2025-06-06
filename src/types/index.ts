@@ -27,6 +27,16 @@ export interface MediaFile {
   size: number;
 }
 
+export interface ReportData {
+  title: string;
+  description: string;
+  location: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+}
+
 // Rozszerzenie Window dla Google API
 declare global {
   interface Window {
