@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, MapPin, ArrowLeft } from 'lucide-react';
 import { GoogleUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
+import { LogOut } from "lucide-react";
 import { LocationModal, Location } from './LocationModal';
 
 interface ReportFormProps {
@@ -101,23 +102,15 @@ export const ReportForm: React.FC<ReportFormProps> = ({
               <Shield className="w-8 h-8 text-blue-600 mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">Szczegóły Incydentu</h1>
             </div>
-            <div className="flex items-center space-x-4">
-              {user.picture && (
-                <img
-                  src={user.picture}
-                  alt="Avatar"
-                  className="w-8 h-8 rounded-full"
-                />
               )}
-              <span className="text-sm text-gray-700">
-                {user.given_name || user.name}
-              </span>
+          
               <button
-                onClick={onSignOut}
-                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
-              >
-                Wyloguj
-              </button>
+  onClick={onSignOut}
+  className="p-2 rounded-full text-red-600 hover:bg-red-100 transition-colors"
+  title="Wyloguj"
+>
+  <LogOut className="w-6 h-6" />
+</button>
             </div>
           </div>
         </div>
