@@ -10,7 +10,4 @@ export default defineConfig({
   build: {
     outDir: "dist",
   },
-  css: {
-    postcss: null, // Wyłącz PostCSS
-  },
 });
