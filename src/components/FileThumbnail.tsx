@@ -1,3 +1,4 @@
+// src/components/FileThumbnail.tsx
 import React from 'react';
 import { Image, Film, FileText, X } from 'lucide-react';
 import { MediaFile } from '../types';
@@ -78,4 +79,5 @@ export const FileThumbnail: React.FC<FileThumbnailProps> = ({
         <div>{formatFileSize(mediaFile.size)}</div>
       </div>
     </div>
-);
+  );
+};
