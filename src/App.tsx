@@ -67,6 +67,9 @@ const useGoogleAuth = () => {
             cancel_on_tap_outside: false, // Nie anuluje przy kliknięciu poza
           });
           
+          // Wyłącz automatyczne wybieranie konta
+          window.google.accounts.id.disableAutoSelect();
+          
           // Sprawdź czy użytkownik jest już zalogowany
           const token = localStorage.getItem('google_token');
           if (token) {
