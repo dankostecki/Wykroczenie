@@ -103,10 +103,20 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       await updateLocationFromCoordinates(center.lat, center.lng);
     });
 
-    // Event listener dla zoomowania - też aktualizuj lokalizację
+    // Event listener dla zoomowania - też aktualizuj lokalizację  
     map.on('zoomend', async () => {
       const center = map.getCenter();
       await updateLocationFromCoordinates(center.lat, center.lng);
+    });
+
+    // Dodaj też event dla każdego ruchu mapy (bardziej responsywne)
+    map.on('move', () => {
+      const center = map.getCenter();
+      // Aktualizuj współrzędne bez reverse geocoding dla płynności
+      setSelectedLocation(prev => ({
+        ...prev,
+        coordinates: { lat: center.lat, lng: center.lng }
+      }));
     });
 
     mapInstanceRef.current = map;
@@ -342,16 +352,18 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             </div>
             
             {/* Stała pinezka w środku mapy */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="relative">
-                {/* Pinezka */}
-                <div className="w-8 h-8 bg-red-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-white" />
+            {mapLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                <div className="relative">
+                  {/* Pinezka */}
+                  <div className="w-10 h-10 bg-red-600 rounded-full border-4 border-white shadow-xl flex items-center justify-center transform -translate-y-5">
+                    <MapPin className="w-6 h-6 text-white fill-current" />
+                  </div>
+                  {/* Cień pinezki */}
+                  <div className="absolute top-5 left-1/2 transform -translate-x-1/2 w-6 h-3 bg-black bg-opacity-30 rounded-full blur-sm"></div>
                 </div>
-                {/* Cień pinezki */}
-                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-4 h-2 bg-black bg-opacity-20 rounded-full blur-sm"></div>
               </div>
-            </div>
+            )}
             
             {/* Instructions overlay */}
             <div className="absolute top-4 left-4 bg-white bg-opacity-95 rounded-lg p-3 shadow-lg max-w-xs border">
