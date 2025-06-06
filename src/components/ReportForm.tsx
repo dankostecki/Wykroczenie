@@ -1,4 +1,3 @@
-// src/components/ReportForm.tsx
 import React, { useState } from 'react';
 import { Shield, ArrowLeft, LogOut, MapPin } from 'lucide-react';
 import { GoogleUser, MediaFile, ReportData } from '../types';
@@ -53,7 +52,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       alert('Proszę opisać co się stało');
       return;
     }
-    // lokalizacja opcjonalna lub sprawdzana w kolejnych krokach
     console.log('Zgłoszenie:', {
       ...reportData,
       files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
@@ -85,15 +83,15 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <Shield className="w-8 h-8 text-blue-600 ml-4" />
               <h1 className="ml-3 text-xl font-semibold text-gray-900">Szczegóły Incydentu</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center">
               {user.picture && (
-                <img src={user.picture} alt="Avatar" className="w-8 h-8 rounded-full" />
+                <img src={user.picture} alt="Avatar" className="w-8 h-8 rounded-full mr-3" />
               )}
               <button
                 onClick={onSignOut}
@@ -148,13 +146,17 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 className="flex items-center border border-gray-300 rounded-md px-4 py-2 hover:bg-gray-50 transition-colors"
               >
                 <MapPin className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Wybierz lokalizację na mapie</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Wybierz lokalizację na mapie
+                </span>
               </button>
             </div>
 
             {/* Załączniki */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Twoje pliki ({files.length})</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">
+                Twoje pliki ({files.length})
+              </h3>
               {files.length > 0 ? (
                 <div className="grid grid-cols-4 gap-3">
                   {files.map(file => (
