@@ -185,7 +185,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
               {/* Przycisk nagrywania */}
               <button
                 onClick={startVideoRecording}
-                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 hover:border-purple-400 hover:bg-purple-50 transition-colors group"
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
               >
                 <Video className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
                 <span className="text-sm font-medium text-gray-700">Nagraj film</span>
