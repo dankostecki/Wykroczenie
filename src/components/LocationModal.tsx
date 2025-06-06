@@ -74,11 +74,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
     const { lat, lng } = selectedLocation.coordinates;
 
-    // Utwórz nową mapę
+    // Utwórz nową mapę z większym zoomem
     const map = window.L.map(mapRef.current, {
       zoomControl: true,
       attributionControl: true
-    }).setView([lat, lng], 13);
+    }).setView([lat, lng], 16); // Zwiększony zoom dla lepszej precyzji
 
     // Dodaj kafelki OpenStreetMap
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -92,7 +92,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         updateLocationFromCoordinates(lat, lng);
-      }, 800); // Zwiększone opóźnienie dla stabilności
+      }, 600); // Skrócone opóźnienie dla szybszej responsywności
     };
 
     // Event listener dla zakończenia przesuwania mapy
@@ -115,7 +115,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       setHasAutoLocalized(true);
       setTimeout(() => {
         getCurrentLocation();
-      }, 1500); // Więcej czasu na stabilizację mapy
+      }, 800); // Skrócony czas na stabilizację mapy
     }
 
     return () => {
@@ -158,83 +158,112 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         address: 'Pobieranie adresu...'
       }));
 
-      // Używamy BigDataCloud API - obsługuje CORS i jest darmowy
-      const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`;
-      console.log('Wywołanie BigDataCloud API:', url);
+      // Spróbuj z bardziej precyzyjnym geocode.maps.co API
+      const primaryUrl = `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`;
+      console.log('Wywołanie precyzyjnego API:', primaryUrl);
 
-      const response = await fetch(url);
+      const primaryResponse = await fetch(primaryUrl);
       
-      console.log('Odpowiedź API status:', response.status);
+      if (primaryResponse.ok) {
+        const primaryData = await primaryResponse.json();
+        console.log('Precyzyjne API data:', primaryData);
+        
+        if (primaryData && primaryData.display_name) {
+          // Sformatuj adres z precyzyjnych danych
+          let formattedAddress = primaryData.display_name;
+          
+          // Jeśli mamy strukturalne dane adresu, użyj ich
+          if (primaryData.address) {
+            const parts = [];
+            
+            // Numer i ulica - najważniejsze
+            if (primaryData.address.house_number && primaryData.address.road) {
+              parts.push(`${primaryData.address.road} ${primaryData.address.house_number}`);
+            } else if (primaryData.address.road) {
+              parts.push(primaryData.address.road);
+            }
+            
+            // Dzielnica lub osiedle
+            if (primaryData.address.suburb || primaryData.address.neighbourhood || primaryData.address.city_district) {
+              parts.push(primaryData.address.suburb || primaryData.address.neighbourhood || primaryData.address.city_district);
+            }
+            
+            // Miasto
+            if (primaryData.address.city || primaryData.address.town || primaryData.address.village) {
+              parts.push(primaryData.address.city || primaryData.address.town || primaryData.address.village);
+            }
+            
+            if (parts.length > 0) {
+              formattedAddress = parts.join(', ');
+            }
+          }
+          
+          // Skróć jeśli za długi
+          if (formattedAddress.length > 80) {
+            const parts = formattedAddress.split(',').slice(0, 3);
+            formattedAddress = parts.join(',').trim();
+          }
+          
+          console.log('Precyzyjny adres:', formattedAddress);
+          
+          setSelectedLocation({
+            address: formattedAddress,
+            coordinates: { lat, lng }
+          });
+          return;
+        }
+      }
+
+      // Fallback do BigDataCloud jeśli pierwszy nie zadziałał
+      console.log('Próba z BigDataCloud API...');
+      const fallbackUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pl`;
+      const fallbackResponse = await fetch(fallbackUrl);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        console.log('BigDataCloud fallback data:', fallbackData);
+        
+        const parts = [];
+        
+        // Spróbuj utworzyć bardziej precyzyjny adres
+        if (fallbackData.locality && fallbackData.locality !== fallbackData.city) {
+          parts.push(fallbackData.locality);
+        }
+        
+        if (fallbackData.city) {
+          parts.push(fallbackData.city);
+        } else if (fallbackData.principalSubdivision) {
+          parts.push(fallbackData.principalSubdivision);
+        }
+        
+        let formattedAddress = parts.length > 0 ? parts.join(', ') : fallbackData.locality || 'Nieznana lokalizacja';
+        
+        // Jeśli mamy dostęp do bardziej szczegółowych danych
+        if (fallbackData.localityInfo && fallbackData.localityInfo.administrative) {
+          const adminParts = [];
+          const admin = fallbackData.localityInfo.administrative;
+          
+          if (admin.level6name) adminParts.push(admin.level6name); // dzielnica
+          if (admin.level4name && admin.level4name !== admin.level6name) adminParts.push(admin.level4name); // miasto
+          
+          if (adminParts.length > 0) {
+            formattedAddress = adminParts.join(', ');
+          }
+        }
+        
+        console.log('BigDataCloud sformatowany adres:', formattedAddress);
+        
+        setSelectedLocation({
+          address: formattedAddress,
+          coordinates: { lat, lng }
+        });
+        return;
       }
       
-      const data = await response.json();
-      console.log('Dane z BigDataCloud API:', data);
-      
-      // Formatuj adres z danych BigDataCloud
-      const parts = [];
-      
-      // Dodaj szczegóły adresu jeśli dostępne
-      if (data.locality) {
-        parts.push(data.locality);
-      } else if (data.city) {
-        parts.push(data.city);
-      }
-      
-      if (data.principalSubdivision && data.principalSubdivision !== data.locality) {
-        parts.push(data.principalSubdivision);
-      }
-      
-      if (data.countryName && parts.length < 2) {
-        parts.push(data.countryName);
-      }
-      
-      let formattedAddress = parts.length > 0 ? parts.join(', ') : 'Nieznana lokalizacja';
-      
-      // Jeśli mamy bardziej szczegółowe dane, użyj ich
-      if (data.label && data.label.length > formattedAddress.length) {
-        formattedAddress = data.label;
-      }
-      
-      // Ogranicz długość adresu
-      if (formattedAddress.length > 100) {
-        formattedAddress = formattedAddress.substring(0, 97) + '...';
-      }
-      
-      console.log('Sformatowany adres:', formattedAddress);
-      
-      setSelectedLocation({
-        address: formattedAddress,
-        coordinates: { lat, lng }
-      });
+      throw new Error('Wszystkie API zawiodły');
       
     } catch (error) {
       console.error('Błąd reverse geocoding:', error);
-      
-      // Fallback - spróbuj alternatywnego API
-      try {
-        console.log('Próba z alternatywnym API...');
-        const fallbackUrl = `https://geocode.maps.co/reverse?lat=${lat}&lon=${lng}&format=json`;
-        const fallbackResponse = await fetch(fallbackUrl);
-        
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          console.log('Dane z fallback API:', fallbackData);
-          
-          if (fallbackData.display_name) {
-            const shortAddress = fallbackData.display_name.split(',').slice(0, 3).join(', ');
-            setSelectedLocation({
-              address: shortAddress,
-              coordinates: { lat, lng }
-            });
-            return;
-          }
-        }
-      } catch (fallbackError) {
-        console.error('Fallback API też nie działa:', fallbackError);
-      }
       
       // Ostateczny fallback - współrzędne
       const fallbackAddress = `📍 ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
@@ -277,7 +306,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         
         // Przenieś mapę do znalezionej lokalizacji
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.setView([lat, lng], 17);
+          mapInstanceRef.current.setView([lat, lng], 18); // Większy zoom dla precyzji
         }
         
         // Użyj display_name jako adres
@@ -324,7 +353,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             const lng = result.longitude;
             
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.setView([lat, lng], 17);
+              mapInstanceRef.current.setView([lat, lng], 18); // Większy zoom
             }
             
             setSelectedLocation({
@@ -362,7 +391,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         
         // Przenieś mapę do aktualnej lokalizacji z wysokim zoomem
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.setView([latitude, longitude], 17);
+          mapInstanceRef.current.setView([latitude, longitude], 18); // Maksymalny zoom dla najlepszej precyzji
         }
         
         // Ustaw lokalizację - reverse geocoding zostanie wywołany automatycznie przez moveend
@@ -419,28 +448,25 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         ></div>
 
         {/* Modal */}
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-50">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">📍 Wybierz lokalizację</h3>
-              <p className="text-sm text-gray-600 mt-1">Przesuń mapę lub wyszukaj adres</p>
-            </div>
+        <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden">
+          {/* Compact header */}
+          <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-base font-medium text-gray-900">📍 Wybierz lokalizację</h3>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-50 rounded-full transition-colors"
+              className="p-1 hover:bg-white hover:bg-opacity-50 rounded-full transition-colors"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-4 h-4 text-gray-500" />
             </button>
           </div>
 
-          {/* Search bar */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
+          {/* Compact search bar */}
+          <div className="p-3 border-b border-gray-200 bg-gray-50">
             {/* Search input */}
-            <div className="mb-3">
+            <div className="mb-2">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
+                  <Search className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="text"
@@ -448,113 +474,109 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
                   placeholder="Wpisz adres (np. Plac Defilad 1, Warszawa)"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
             </div>
             
-            {/* Przyciski akcji */}
+            {/* Compact action buttons */}
             <div className="flex gap-2">
               <button
                 onClick={searchLocation}
                 disabled={isSearching || !searchQuery.trim()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                {isSearching ? 'Wyszukuję...' : 'Wyszukaj adres'}
+                {isSearching ? 'Szukam...' : 'Szukaj'}
               </button>
               <button
                 onClick={getCurrentLocation}
                 disabled={isGettingLocation}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center text-sm font-medium"
+                className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center text-sm font-medium"
               >
-                <Navigation className="w-4 h-4 mr-1" />
-                {isGettingLocation ? 'Lokalizuję...' : 'Moja lokalizacja'}
+                <Navigation className="w-3 h-3 mr-1" />
+                {isGettingLocation ? 'GPS...' : 'Moja lokalizacja'}
               </button>
             </div>
           </div>
 
-          {/* Map container */}
-          <div className="relative" style={{ height: '400px' }}>
+          {/* Compact map container */}
+          <div className="relative" style={{ height: '320px' }}>
             <div ref={mapRef} className="w-full h-full">
               {!mapLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Ładowanie mapy...</p>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-xs text-gray-600">Ładowanie mapy...</p>
                   </div>
                 </div>
               )}
             </div>
             
-            {/* Stała pinezka w środku mapy - Uber style */}
+            {/* Mniejsza pinezka - Uber style */}
             {mapLoaded && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1000 }}>
                 <div className="relative">
-                  {/* Animowana pinezka */}
-                  <div className="w-12 h-12 bg-red-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transform -translate-y-6 hover:scale-110 transition-transform">
-                    <MapPin className="w-7 h-7 text-white fill-white" />
+                  {/* Kompaktowa pinezka */}
+                  <div className="w-8 h-8 bg-red-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center transform -translate-y-4">
+                    <MapPin className="w-5 h-5 text-white fill-white" />
                   </div>
-                  {/* Pulsujący cień */}
-                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-8 h-4 bg-black bg-opacity-40 rounded-full blur-md animate-pulse"></div>
+                  {/* Subtelny cień */}
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4 h-2 bg-black bg-opacity-20 rounded-full blur-sm"></div>
                   {/* Punkt precyzji */}
-                  <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full"></div>
+                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>
                 </div>
               </div>
             )}
             
-            {/* Instructions overlay */}
-            <div className="absolute top-4 left-4 bg-white bg-opacity-95 rounded-lg p-3 shadow-lg max-w-sm border">
+            {/* Compact instructions */}
+            <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-md p-2 shadow-sm max-w-xs border">
               <p className="text-xs text-gray-700">
-                <span className="font-semibold text-blue-600">💡 Jak używać:</span><br />
-                • Przesuń mapę palcem/myszą<br />
-                • Pinezka zawsze wskazuje środek<br />
-                • Zoom dla większej dokładności<br />
+                <span className="font-medium text-blue-600">💡</span> Przesuń mapę aby wybrać lokalizację
                 {isLoadingAddress && (
-                  <span className="text-orange-600 font-medium">• ⏳ Pobieranie adresu...</span>
+                  <span className="text-orange-600 font-medium block">⏳ Pobieranie adresu...</span>
                 )}
                 {selectedLocation.address.startsWith('📍') && (
-                  <span className="text-red-600 font-medium">• ⚠️ Nie można pobrać adresu</span>
+                  <span className="text-red-600 font-medium block">⚠️ Nie można pobrać adresu</span>
                 )}
               </p>
             </div>
           </div>
 
-          {/* Current address display */}
-          <div className="p-4 bg-gray-50 border-t">
-            <div className="bg-white rounded-md p-3 border">
-              <div className="flex items-start">
-                <MapPin className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">Wybrana lokalizacja:</p>
-                  <div className="flex items-center mt-1">
+          {/* Compact current address display */}
+          <div className="p-3 bg-gray-50 border-t">
+            <div className="bg-white rounded-md p-2 border">
+              <div className="flex items-center">
+                <MapPin className="w-4 h-4 text-blue-600 mr-2 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center">
                     {isLoadingAddress && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
                     )}
-                    <p className="text-sm text-gray-600 leading-relaxed flex-1">{selectedLocation.address}</p>
+                    <p className="text-sm text-gray-700 truncate">{selectedLocation.address}</p>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Współrzędne: {selectedLocation.coordinates.lat.toFixed(6)}, {selectedLocation.coordinates.lng.toFixed(6)}
+                    {selectedLocation.coordinates.lat.toFixed(5)}, {selectedLocation.coordinates.lng.toFixed(5)}
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-200 bg-white">
+          {/* Compact footer */}
+          <div className="flex justify-between items-center p-3 border-t border-gray-200 bg-white">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              className="px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm"
             >
               Anuluj
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedLocation.address === 'Przesuwaj mapę aby wybrać lokalizację...'}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center text-sm"
             >
-              <Check className="w-4 h-4 mr-2" />
-              Potwierdź lokalizację
+              <Check className="w-4 h-4 mr-1" />
+              Potwierdź
             </button>
           </div>
         </div>
