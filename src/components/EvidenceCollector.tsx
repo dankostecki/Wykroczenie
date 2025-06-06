@@ -162,36 +162,34 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
           </div>
 
           {/* Sekcja przycisków akcji */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Przycisk zdjęcia */}
-              <button
-                onClick={takePhoto}
-                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
-              >
-                <Camera className="w-8 h-8 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium text-gray-700">Zrób zdjęcie</span>
-              </button>
+<div className="p-4 border-b border-gray-200 space-y-2">
+  {/* Wiersz 1: Dodaj pliki (na całą szerokość) */}
+  <button
+    onClick={selectFiles}
+    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+  >
+    <Upload className="w-5 h-5" />
+    <span>Dodaj pliki</span>
+  </button>
 
-              {/* Przycisk nagrywania */}
-              <button
-                onClick={startVideoRecording}
-                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
-              >
-                <Video className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium text-gray-700">Nagraj film</span>
-              </button>
-
-              {/* Przycisk dodawania plików */}
-              <button
-                onClick={selectFiles}
-                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors group"
-              >
-                <Upload className="w-8 h-8 text-green-600 mb-2 group-hover:scale-110 transition-transform" />
-                <span className="text-sm font-medium text-gray-700">Dodaj pliki</span>
-              </button>
-            </div>
-          </div>
+  {/* Wiersz 2: Zrób zdjęcie | Nagraj film */}
+  <div className="flex gap-2">
+    <button
+      onClick={takePhoto}
+      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+    >
+      <Camera className="w-5 h-5" />
+      <span>Zrób zdjęcie</span>
+    </button>
+    <button
+      onClick={startVideoRecording}
+      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+    >
+      <Video className="w-5 h-5" />
+      <span>Nagraj film</span>
+    </button>
+  </div>
+</div>
 
           {/* Sekcja z plikami */}
           <div className="p-6">
