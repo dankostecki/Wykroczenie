@@ -325,11 +325,12 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         </div>
       </main>
 
-      {/* Location Modal */}
+      {/* Location Modal z przekazanym emailem użytkownika */}
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
         onLocationSelect={handleLocationSelect}
+        userEmail={user.email}
       />
     </div>
   );
