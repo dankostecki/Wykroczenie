@@ -1,10 +1,10 @@
 // src/components/ReportForm.tsx
-import React, { useState, useEffect } from 'react';
-import { Shield, MapPin, ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, MapPin } from 'lucide-react';
 import { GoogleUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
-import { LogOut } from "lucide-react";
 import { LocationModal, Location } from './LocationModal';
+import { Header } from './Header'; // <- Nowy import!
 
 interface ReportFormProps {
   user: GoogleUser;
@@ -82,38 +82,18 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   };
 
   const removeFile = (id: string) => {
-    console.log('Usuń plik o id:', id);
-    // do zaimplementowania: wywołać przekazaną z rodzica funkcję usuwania
+    // Do zaimplementowania: przekazanie usuwania pliku do rodzica, jeśli potrzeba
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className={`bg-white shadow-sm border-b ${isUploading ? 'mt-16' : ''}`}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <button
-                onClick={onBack}
-                className="mr-3 p-2 hover:bg-gray-100 rounded-full"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <Shield className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">Szczegóły Incydentu</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-    onClick={onSignOut}
-    className="p-2 rounded-full text-red-600 hover:bg-red-100 transition-colors"
-    title="Wyloguj"
-  >
-    <LogOut className="w-6 h-6" />
-  </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Wspólny header */}
+      <Header
+        title="Szczegóły Incydentu"
+        onSignOut={onSignOut}
+        showBack={true}
+        onBack={onBack}
+      />
 
       {/* Main */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
