@@ -8,6 +8,7 @@ import { Header } from './Header';
 interface ReportFormProps {
   user: GoogleUser;
   files: MediaFile[];
+  accessToken: string | null; // <-- DODANO TUTAJ!
   onSignOut: () => void;
   onBack: () => void;
   uploadProgress: number;
@@ -17,6 +18,7 @@ interface ReportFormProps {
 export const ReportForm: React.FC<ReportFormProps> = ({
   user,
   files,
+  accessToken, // <-- DODANO TUTAJ!
   onSignOut,
   onBack,
   uploadProgress,
@@ -72,6 +74,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       ...reportData,
       files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
       user: user.email,
+      accessToken, // <-- Możesz go użyć do wysyłki maila!
     });
     alert('Zgłoszenie zostało przesłane pomyślnie!');
   };
