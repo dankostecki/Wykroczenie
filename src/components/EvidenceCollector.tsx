@@ -3,8 +3,8 @@ import { Camera, Video, Upload, Plus } from 'lucide-react';
 import { GoogleUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
-import { LogOut } from "lucide-react";
 import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
+import { Header } from './Header'; // <- nowy import!
 
 interface EvidenceCollectorProps {
   user: GoogleUser;
@@ -19,27 +19,21 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Hook do Google Drive upload
   const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
 
-  // Funkcja do generowania unikalnego ID
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Funkcja do określenia typu pliku
   const getFileType = (file: File): 'image' | 'video' | 'document' => {
     if (file.type.startsWith('image/')) return 'image';
     if (file.type.startsWith('video/')) return 'video';
     return 'document';
   };
 
-  // Funkcja do dodawania plików
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
-    
     Array.from(selectedFiles).forEach(file => {
       const fileType = getFileType(file);
       const url = URL.createObjectURL(file);
-      
       const mediaFile: MediaFile = {
         id: generateId(),
         file,
@@ -48,12 +42,10 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         name: file.name,
         size: file.size
       };
-      
       setFiles(prev => [...prev, mediaFile]);
     });
   };
 
-  // Funkcja do usuwania pliku
   const removeFile = (id: string) => {
     setFiles(prev => {
       const fileToRemove = prev.find(f => f.id === id);
@@ -64,38 +56,30 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     });
   };
 
-  // Funkcja do robienia zdjęcia
   const takePhoto = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
   };
 
-  // Funkcja do nagrywania filmu - otwiera natywną kamerę
   const startVideoRecording = () => {
     if (videoInputRef.current) {
       videoInputRef.current.click();
     }
   };
 
-  // Funkcja do wybierania plików z urządzenia
   const selectFiles = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Funkcja do przejścia do formularza zgłoszenia
   const handleContinueToReport = async () => {
     if (files.length === 0) {
       alert('Dodaj przynajmniej jeden plik jako dowód incydentu');
       return;
     }
-
-    // Przejdź do następnego ekranu
     setCurrentStep('report');
-    
-    // Rozpocznij upload plików w tle
     try {
       await uploadFiles(files);
       console.log('Pliki zostały przesłane na Google Drive');
@@ -105,50 +89,39 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     }
   };
 
-  // Funkcja do powrotu do ekranu dowodów
   const handleBackToEvidence = () => {
     setCurrentStep('evidence');
   };
 
-  // Renderuj odpowiedni ekran
   if (currentStep === 'report') {
     return (
-      <ReportForm
-        user={user}
-        files={files}
-        onSignOut={onSignOut}
-        onBack={handleBackToEvidence}
-        uploadProgress={progress}
-        isUploading={isUploading}
-      />
+      <>
+        <Header
+          title="Zgłoszenie Wykroczenia"
+          onSignOut={onSignOut}
+          showBack={true}
+          onBack={handleBackToEvidence}
+        />
+        <ReportForm
+          user={user}
+          files={files}
+          onSignOut={onSignOut}
+          onBack={handleBackToEvidence}
+          uploadProgress={progress}
+          isUploading={isUploading}
+        />
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Camera className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">Zbieranie Dowodów</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              
-              <button
-  onClick={onSignOut}
-  className="p-2 rounded-full text-red-600 hover:bg-red-100 transition-colors"
-  title="Wyloguj"
->
-  <LogOut className="w-6 h-6" />
-</button>
-
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        title="Zbieranie Dowodów"
+        onSignOut={onSignOut}
+        showBack={false}
+        showCamera={true}
+      />
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -161,33 +134,33 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
           </div>
 
           <div className="p-4 border-b border-gray-200 space-y-4">
-  {/* Wiersz 1: Dodaj pliki */}
-  <button
-    onClick={selectFiles}
-    className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
-  >
-    <Upload className="w-5 h-5" />
-    <span>Dodaj pliki</span>
-  </button>
+            {/* Wiersz 1: Dodaj pliki */}
+            <button
+              onClick={selectFiles}
+              className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
+            >
+              <Upload className="w-5 h-5" />
+              <span>Dodaj pliki</span>
+            </button>
 
-  {/* Wiersz 2: Zrób zdjęcie | Nagraj film */}
-  <div className="flex gap-4">
-    <button
-      onClick={takePhoto}
-      className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
-    >
-      <Camera className="w-5 h-5" />
-      <span>Zrób zdjęcie</span>
-    </button>
-    <button
-      onClick={startVideoRecording}
-      className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
-    >
-      <Video className="w-5 h-5" />
-      <span>Nagraj film</span>
-    </button>
-  </div>
-</div>
+            {/* Wiersz 2: Zrób zdjęcie | Nagraj film */}
+            <div className="flex gap-4">
+              <button
+                onClick={takePhoto}
+                className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Zrób zdjęcie</span>
+              </button>
+              <button
+                onClick={startVideoRecording}
+                className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
+              >
+                <Video className="w-5 h-5" />
+                <span>Nagraj film</span>
+              </button>
+            </div>
+          </div>
 
           {/* Sekcja z plikami */}
           <div className="p-6">
@@ -209,16 +182,16 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
             </div>
 
             {files.length === 0 ? (
-  <div className="text-center py-3">
-    <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-    <p className="text-gray-500 text-sm">
-      Nie dodano jeszcze żadnych plików
-    </p>
-    <p className="text-gray-400 text-xs mt-1">
-      Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
-    </p>
-  </div>
-) : (
+              <div className="text-center py-3">
+                <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">
+                  Nie dodano jeszcze żadnych plików
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
+                </p>
+              </div>
+            ) : (
               <div className="grid grid-cols-4 lg:grid-cols-5 gap-4">
                 {files.map(file => (
                   <FileThumbnail key={file.id} mediaFile={file} onRemove={removeFile} />
