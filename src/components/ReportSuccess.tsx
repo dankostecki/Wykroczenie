@@ -8,7 +8,7 @@ interface ReportSuccessProps {
   location?: string;
   folderUrl: string;
   onNewReport: () => void;
-  onSignOut?: () => void;
+  onSignOut: () => void;
 }
 
 export const ReportSuccess: React.FC<ReportSuccessProps> = ({
