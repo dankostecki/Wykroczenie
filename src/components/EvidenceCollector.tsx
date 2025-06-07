@@ -161,12 +161,11 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
             </p>
           </div>
 
-          {/* Sekcja przycisków akcji */}
-<div className="p-4 border-b border-gray-200 space-y-2">
-  {/* Wiersz 1: Dodaj pliki (na całą szerokość) */}
+          <div className="p-4 border-b border-gray-200 space-y-2">
+  {/* Wiersz 1: Dodaj pliki */}
   <button
     onClick={selectFiles}
-    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
   >
     <Upload className="w-5 h-5" />
     <span>Dodaj pliki</span>
@@ -176,14 +175,14 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   <div className="flex gap-2">
     <button
       onClick={takePhoto}
-      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
     >
       <Camera className="w-5 h-5" />
       <span>Zrób zdjęcie</span>
     </button>
     <button
       onClick={startVideoRecording}
-      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition"
+      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
     >
       <Video className="w-5 h-5" />
       <span>Nagraj film</span>
@@ -221,7 +220,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-4 lg:grid-cols-5 gap-4">
                 {files.map(file => (
                   <FileThumbnail key={file.id} mediaFile={file} onRemove={removeFile} />
                 ))}
