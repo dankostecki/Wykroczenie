@@ -175,7 +175,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
           {/* Sekcja nagłówka - zgodna z pozostałymi komponentami */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
             <p className="text-blue-100 text-sm">
-              Wybierz odbiorców zgłoszenia i wyślij raport
+              Wybierz odbiorców zgłoszenia
             </p>
           </div>
 
@@ -218,9 +218,9 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                 {recipientType === "police" ? "Komenda policji" : "Adres e-mail"}
               </label>
               {recipientType === "police" ? (
-                <div className="flex gap-2">
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:gap-2">
                   <select
-                    className="flex-1 px-3 py-2 border rounded-lg text-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full sm:flex-1 sm:min-w-0 px-3 py-2 border rounded-lg text-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     value={selectedPolice}
                     onChange={(e) => setSelectedPolice(e.target.value)}
                   >
@@ -235,7 +235,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                     type="button"
                     onClick={handleAddPolice}
                     disabled={!selectedPolice}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Dodaj
                   </button>
@@ -245,7 +245,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                   <input
                     type="email"
                     ref={inputRef}
-                    placeholder="np. zgłoszenia@instytucja.gov.pl"
+                    placeholder="email odbiorcy"
                     value={customEmailInput}
                     onChange={e => {
                       setCustomEmailInput(e.target.value);
