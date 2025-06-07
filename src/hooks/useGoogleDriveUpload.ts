@@ -1,31 +1,7 @@
 import { useState, useCallback } from "react";
 import { MediaFile } from "../types";
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
-const SCOPE = 'https://www.googleapis.com/auth/drive.file';
-
-function getAccessToken(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // @ts-ignore
-    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-      return reject("Google Identity Services nie załadowane");
-    }
-
-    // @ts-ignore
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPE,
-      callback: (tokenResponse: any) => {
-        if (tokenResponse && tokenResponse.access_token) {
-          resolve(tokenResponse.access_token);
-        } else {
-          reject("Nie udało się pobrać tokenu Google");
-        }
-      },
-    });
-    tokenClient.requestAccessToken();
-  });
-}
+// NIE potrzebujesz już CLIENT_ID ani SCOPE!
 
 function createDriveFolder(token: string, folderName: string): Promise<string> {
   return fetch('https://www.googleapis.com/drive/v3/files', {
@@ -122,6 +98,7 @@ function uploadFileToDrive(
   });
 }
 
+// <-- TU SIĘ ZMIENIA! -->
 export function useGoogleDriveUpload() {
   const [progress, setProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -129,7 +106,8 @@ export function useGoogleDriveUpload() {
   const [folderUrl, setFolderUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadFiles = useCallback(async (files: MediaFile[]) => {
+  // <-- Teraz funkcja przyjmuje accessToken jako argument -->
+  const uploadFiles = useCallback(async (files: MediaFile[], accessToken: string) => {
     setProgress(0);
     setIsUploading(true);
     setError(null);
@@ -137,7 +115,7 @@ export function useGoogleDriveUpload() {
     setFolderUrl(null);
 
     try {
-      const token = await getAccessToken();
+      const token = accessToken; // <-- korzystamy z przekazanego tokena!
 
       const now = new Date();
       const folderName = `Zgłoszenie_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
@@ -165,7 +143,7 @@ export function useGoogleDriveUpload() {
   }, []);
 
   return {
-    uploadFiles,
+    uploadFiles,    // UWAGA: teraz (files, accessToken)
     progress,
     isUploading,
     folderId,
