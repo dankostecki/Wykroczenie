@@ -8,6 +8,7 @@ import { Header } from './Header';
 
 interface EvidenceCollectorProps {
   user: GoogleUser;
+  accessToken: string | null;
   onSignOut: () => void;
 }
 
