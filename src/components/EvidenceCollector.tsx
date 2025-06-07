@@ -177,14 +177,18 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     setSendError(null);
     try {
       let body = `${reportData.description}\n\n`;
-      if (reportData.location) {
-        body += `Lokalizacja: ${reportData.location}`;
-        if (reportData.coordinates) {
-          body += ` (${reportData.coordinates.lat}, ${reportData.coordinates.lng})`;
-        }
-        body += '\n\n';
-      }
-      body += `Dowody: ${folderUrl}`;
+
+if (reportData.location) {
+  body += `Lokalizacja:\n${reportData.location}\n`;
+
+  if (reportData.coordinates) {
+    body += `(${reportData.coordinates.lat}, ${reportData.coordinates.lng})\n`;
+  }
+
+  body += `\n`; // <- PUSTA LINIA przed sekcją "Dowody"
+}
+
+body += `Dowody: ${folderUrl}`;
 
       await sendGmail({
         accessToken,
