@@ -1,12 +1,11 @@
 import React from "react";
-import { LogOut, ArrowLeft, Camera } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 
 interface HeaderProps {
-  title: string;
+  title: React.ReactNode;
   onSignOut: () => void;
   showBack?: boolean;
   onBack?: () => void;
-  showCamera?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,7 +13,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   showBack = false,
   onBack,
-  showCamera = false
 }) => {
   return (
     <header className="bg-white shadow-sm border-b">
@@ -29,9 +27,6 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <ArrowLeft className="w-6 h-6" />
               </button>
-            )}
-            {showCamera && (
-              <Camera className="w-8 h-8 text-blue-600 mr-1" />
             )}
             <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
           </div>
