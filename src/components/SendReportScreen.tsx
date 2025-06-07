@@ -8,10 +8,12 @@ interface Recipient {
   email: string;
 }
 
-const DEFAULT_RECIPIENTS: Recipient[] = [
-  { label: "Policja", email: "dyzurny@policja.gov.pl" },
-  { label: "Straż miejska", email: "interwencje@strażmiejska.pl" },
-  // Dodaj więcej według potrzeb
+const POLICE_DEPARTMENTS: Recipient[] = [
+  { label: "Komenda Miejska Policji w Warszawie", email: "warszawa@policja.gov.pl" },
+  { label: "Komenda Miejska Policji w Krakowie", email: "krakow@policja.gov.pl" },
+  { label: "Komenda Powiatowa Policji w Łomży", email: "lomza@policja.gov.pl" },
+  { label: "Komenda Powiatowa Policji w Gdańsku", email: "gdansk@policja.gov.pl" },
+  // ...dodaj więcej jeśli trzeba
 ];
 
 interface SendReportScreenProps {
@@ -42,6 +44,8 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+type RecipientType = 'police' | 'custom';
+
 export const SendReportScreen: React.FC<SendReportScreenProps> = ({
   title,
   description,
@@ -53,28 +57,33 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
   onSignOut,
   onBack,
 }) => {
-  // Lista wszystkich wybranych adresów do wysyłki
-  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
-  // Obsługa własnych emaili z localStorage
+  // Nowy wybór trybu
+  const [recipientType, setRecipientType] = useState<RecipientType>('police');
+  // Do wyboru komendy policji
+  const [selectedPolice, setSelectedPolice] = useState<string>('');
+  // Do wpisania własnego maila
   const [customEmailInput, setCustomEmailInput] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  // Lista adresów do wysyłki
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+  // Historia własnych maili
   const [customEmailList, setCustomEmailList] = useState<string[]>([]);
+  // Sugestie podpowiedzi
   const [customSuggestions, setCustomSuggestions] = useState<string[]>([]);
+  // Error emaila
   const [emailError, setEmailError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Ładuj maile z localStorage na start
   useEffect(() => {
     setCustomEmailList(getLocalEmails());
   }, []);
 
-  // Podpowiedzi własnych adresów przy wpisywaniu
   useEffect(() => {
     if (customEmailInput.length > 1) {
       setCustomSuggestions(
         customEmailList
           .filter(email =>
-            email.includes(customEmailInput) && !selectedRecipients.includes(email)
+            email.toLowerCase().includes(customEmailInput.toLowerCase()) &&
+            !selectedRecipients.includes(email)
           )
           .slice(0, 5)
       );
@@ -83,7 +92,15 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
     }
   }, [customEmailInput, customEmailList, selectedRecipients]);
 
-  // Dodaj wybrany/nowy email
+  // Dodaj wybraną komendę policji
+  const handleAddPolice = () => {
+    if (selectedPolice && !selectedRecipients.includes(selectedPolice)) {
+      setSelectedRecipients(prev => [...prev, selectedPolice]);
+    }
+    setSelectedPolice('');
+  };
+
+  // Dodaj własny e-mail
   const handleAddCustomEmail = (email: string) => {
     if (!isValidEmail(email)) {
       setEmailError("Niepoprawny adres email.");
@@ -107,21 +124,12 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
     setSelectedRecipients(prev => prev.filter(e => e !== email));
   };
 
-  // Usuwanie adresu z localStorage (z historii)
+  // Usuwanie adresu z historii (localStorage)
   const handleRemoveCustomHistory = (email: string) => {
     const updated = customEmailList.filter(e => e !== email);
     setCustomEmailList(updated);
     setLocalEmails(updated);
     setCustomSuggestions(suggestions => suggestions.filter(e => e !== email));
-  };
-
-  // Zaznaczanie odbiorców domyślnych (Policja, Straż)
-  const handleRecipientToggle = (email: string) => {
-    setSelectedRecipients(prev =>
-      prev.includes(email)
-        ? prev.filter(e => e !== email)
-        : [...prev, email]
-    );
   };
 
   // Enter = dodanie własnego maila
@@ -155,44 +163,69 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
             <span className="mr-2">✉️</span> Wyślij zgłoszenie
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
-            Wybierz odbiorcę zgłoszenia lub wpisz własny adres e-mail.
+            Wybierz odbiorcę zgłoszenia (komenda policji lub własny adres e-mail).
           </p>
 
+          {/* Nowy wybór odbiorcy */}
           <div className="mb-6">
-            <div className="mb-2 font-medium">Adresaci:</div>
-            {DEFAULT_RECIPIENTS.map(rec => (
-              <label key={rec.email} className="flex items-center mb-2">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={selectedRecipients.includes(rec.email)}
-                  onChange={() => handleRecipientToggle(rec.email)}
-                />
-                <span>{rec.label} <span className="text-xs text-gray-500">({rec.email})</span></span>
-              </label>
-            ))}
-
-            {/* Dodaj własny adres */}
-            <button
-              type="button"
-              className="mt-3 mb-1 text-blue-600 underline text-sm"
-              onClick={() => setShowCustomInput(v => !v)}
-            >
-              {showCustomInput ? "Ukryj pole własnego e-maila" : "Dodaj własny adres e-mail"}
-            </button>
-
-            {showCustomInput && (
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <button
+                type="button"
+                className={`flex items-center justify-center py-2 rounded-xl border w-full transition ${recipientType === "police"
+                  ? "border-blue-600 bg-blue-50 font-semibold"
+                  : "border-gray-300 bg-white"
+                  }`}
+                onClick={() => setRecipientType("police")}
+              >
+                Komenda Policji
+              </button>
+              <button
+                type="button"
+                className={`flex items-center justify-center py-2 rounded-xl border w-full transition ${recipientType === "custom"
+                  ? "border-blue-600 bg-blue-50 font-semibold"
+                  : "border-gray-300 bg-white"
+                  }`}
+                onClick={() => setRecipientType("custom")}
+              >
+                Własny email
+              </button>
+            </div>
+            {/* Jedno pole, zależnie od wyboru */}
+            {recipientType === "police" ? (
+              <div className="flex gap-2">
+                <select
+                  className="w-full border rounded-lg p-2 text-gray-700"
+                  value={selectedPolice}
+                  onChange={(e) => setSelectedPolice(e.target.value)}
+                >
+                  <option value="">Wybierz komendę...</option>
+                  {POLICE_DEPARTMENTS.map((dept) => (
+                    <option key={dept.email} value={dept.email}>
+                      {dept.label} ({dept.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddPolice}
+                  disabled={!selectedPolice}
+                  className={`px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold transition ${!selectedPolice ? "opacity-50 pointer-events-none" : ""}`}
+                >
+                  Dodaj
+                </button>
+              </div>
+            ) : (
               <div className="relative">
                 <input
                   type="email"
                   ref={inputRef}
-                  placeholder="Twój e-mail"
+                  placeholder="Twój adres email"
                   value={customEmailInput}
                   onChange={e => {
                     setCustomEmailInput(e.target.value);
                     setEmailError(null);
                   }}
-                  className="w-full border rounded px-3 py-2 mt-1 mb-1"
+                  className="w-full border rounded-lg px-3 py-2 mb-1"
                   autoFocus
                   onKeyDown={handleInputKey}
                   autoComplete="off"
