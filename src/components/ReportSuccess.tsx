@@ -17,7 +17,7 @@ export const ReportSuccess: React.FC<ReportSuccessProps> = ({
   folderUrl,
   onNewReport,
 }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+  <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
     <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
       <div className="flex justify-center mb-6">
         <div className="rounded-full bg-green-100 p-4">
