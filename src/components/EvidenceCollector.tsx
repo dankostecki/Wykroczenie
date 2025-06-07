@@ -82,7 +82,12 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, acce
     }
     setCurrentStep('report');
     try {
-      await uploadFiles(files);
+      // KLUCZOWA ZMIANA — przekazujesz accessToken:
+      if (!accessToken) {
+        alert('Brak tokenu Google, spróbuj się ponownie zalogować.');
+        return;
+      }
+      await uploadFiles(files, accessToken);
       console.log('Pliki zostały przesłane na Google Drive');
     } catch (error) {
       console.error('Błąd podczas przesyłania plików:', error);
@@ -94,13 +99,12 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, acce
     setCurrentStep('evidence');
   };
 
-  // --- KLUCZOWE: Header tylko na ekranie dowodów ---
   if (currentStep === 'report') {
     return (
       <ReportForm
         user={user}
         files={files}
-        accessToken={accessToken}         // <-- DODANE!
+        accessToken={accessToken}
         onSignOut={onSignOut}
         onBack={handleBackToEvidence}
         uploadProgress={progress}
