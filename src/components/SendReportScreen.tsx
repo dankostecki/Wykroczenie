@@ -170,12 +170,10 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
         onBack={onBack}
       />
 
-      <div className="flex-1 flex items-center justify-start px-4">
-        <div className="bg-blue-600 text-white text-xl font-bold px-6 py-4 rounded-t-xl flex items-center gap-2 mb-6">
+      <div className="flex-1 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-         <p className="text-blue-100 text-sm">
-                Wybierz odbiorce zgłoszenia
-              </p>
+         <div className="bg-blue-600 text-white text-xl font-bold px-6 py-4 rounded-t-xl flex items-center gap-2 mb-6">
+  <span>Wybierz odbiorcę zgłoszenia:</span>
 </div>
 
           {/* Nowy wybór odbiorcy */}
