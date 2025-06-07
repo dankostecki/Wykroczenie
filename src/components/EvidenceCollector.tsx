@@ -7,7 +7,7 @@ import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
 import { Header } from './Header';
 
 interface EvidenceCollectorProps {
-  user: GoogleUser;
+  user: GoogleAllUser;
   accessToken: string | null;
   onSignOut: () => void;
 }
