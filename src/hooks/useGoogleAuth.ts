@@ -38,6 +38,8 @@ export const useGoogleAuth = () => {
             callback: handleCredentialResponse,
             auto_select: false, // Wyłącza automatyczne logowanie
             cancel_on_tap_outside: false, // Nie anuluje przy kliknięciu poza
+            // --- DODANE SCOPES ---
+            scope: 'openid email profile https://www.googleapis.com/auth/drive.file'
           });
           
           // Wyłącz automatyczne wybieranie konta
