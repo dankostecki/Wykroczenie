@@ -182,7 +182,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         if (reportData.coordinates) {
           body += ` (${reportData.coordinates.lat}, ${reportData.coordinates.lng})`;
         }
-        body += '\n';
+        body += '\n\n';
       }
       body += `Dowody: ${folderUrl}`;
 
