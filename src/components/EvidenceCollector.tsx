@@ -8,7 +8,7 @@ import { Header } from './Header';
 import { SendReportScreen } from './SendReportScreen';
 import { ReportSuccess } from './ReportSuccess';
 
-// Funkcja do wysyłania maila przez Gmail API (prosty przykład)
+// Funkcja wysyłania maila przez Gmail API
 async function sendGmail({
   accessToken,
   recipients,
@@ -20,8 +20,6 @@ async function sendGmail({
   subject: string;
   body: string;
 }) {
-  // Składamy "raw" maila jako base64
-  const boundary = "--boundary";
   const to = recipients.join(', ');
   const message =
     `To: ${to}\r\n` +
@@ -82,7 +80,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const { uploadFiles, progress, isUploading, folderId } = useGoogleDriveUpload();
+  const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -151,7 +149,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         setUploadError('Brak tokenu Google – zaloguj się ponownie.');
         return;
       }
-      // Upload plików na Drive (tworzy folder, wrzuca pliki)
       const uploadResult = await uploadFiles(files, accessToken);
       setFolderUrl(uploadResult.folderUrl);
     } catch (error: any) {
@@ -230,7 +227,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
             </div>
 
             <div className="p-4 border-b border-gray-200 space-y-4">
-              {/* Dodaj pliki */}
               <button
                 onClick={selectFiles}
                 className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
@@ -238,8 +234,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                 <Upload className="w-5 h-5" />
                 <span>Dodaj pliki</span>
               </button>
-
-              {/* Zrób zdjęcie / Nagraj film */}
               <div className="flex gap-4">
                 <button
                   onClick={takePhoto}
@@ -257,7 +251,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                 </button>
               </div>
             </div>
-
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -339,7 +332,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     );
   }
 
-  // KROK 2: FORMULARZ ZGŁOSZENIA
   if (currentStep === 'report') {
     return (
       <ReportForm
@@ -350,12 +342,11 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         onBack={() => setCurrentStep('evidence')}
         uploadProgress={progress}
         isUploading={isUploading}
-        onSubmit={handleSubmitForm} // Dodaj callback submit
+        onSubmit={handleSubmitForm}
       />
     );
   }
 
-  // KROK 3: WYBÓR ADRESATÓW I WYSYŁKA
   if (currentStep === 'send') {
     return (
       <SendReportScreen
@@ -370,7 +361,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     );
   }
 
-  // KROK 4: POTWIERDZENIE
   if (currentStep === 'success') {
     return (
       <ReportSuccess
