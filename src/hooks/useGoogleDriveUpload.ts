@@ -1,18 +1,24 @@
 import { useState, useCallback } from "react";
 import { MediaFile } from "../types";
 
-// Pobierz Client ID z ENV
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
+// To sprawia, że TypeScript nie będzie się czepiał Google Identity Services
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 function getAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
+    // @ts-ignore
     if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
       return reject("Google Identity Services nie załadowane");
     }
 
+    // @ts-ignore
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPE,
