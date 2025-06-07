@@ -1,193 +1,180 @@
-import { useState, useCallback } from 'react';
-import { MediaFile } from '../types';
+import { useState, useCallback } from "react";
+import { MediaFile } from "../types";
 
-interface UploadProgress {
-  fileId: string;
-  fileName: string;
-  progress: number;
-  status: 'pending' | 'uploading' | 'completed' | 'error';
-  driveUrl?: string;
-}
+// Pobierz Client ID z ENV
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
+const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
-interface UseGoogleDriveUploadReturn {
-  uploadFiles: (files: MediaFile[]) => Promise<string[]>;
-  progress: number;
-  isUploading: boolean;
-  uploadStatus: UploadProgress[];
-  folderUrl: string | null;
-}
+type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
 
-export const useGoogleDriveUpload = (): UseGoogleDriveUploadReturn => {
-  const [progress, setProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<UploadProgress[]>([]);
-  const [folderUrl, setFolderUrl] = useState<string | null>(null);
+function getAccessToken(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+      return reject("Google Identity Services nie załadowane");
+    }
 
-  // Funkcja do tworzenia nazwy folderu z datą i godziną
-  const createFolderName = (): string => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const minute = String(now.getMinutes()).padStart(2, '0');
-    
-    return `Wykroczenie_${year}-${month}-${day}_${hour}-${minute}`;
-  };
-
-  // Mock funkcja Google Drive API - w rzeczywistości użyjesz Google Drive API
-  const mockUploadFile = (file: MediaFile): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      // Symulacja uploadu z progresem
-      let currentProgress = 0;
-      const interval = setInterval(() => {
-        currentProgress += Math.random() * 20;
-        if (currentProgress >= 100) {
-          currentProgress = 100;
-          clearInterval(interval);
-          
-          // Symulacja URL do pliku na Drive
-          const mockDriveUrl = `https://drive.google.com/file/d/mock_${file.id}/view`;
-          resolve(mockDriveUrl);
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      callback: (tokenResponse: any) => {
+        if (tokenResponse && tokenResponse.access_token) {
+          resolve(tokenResponse.access_token);
+        } else {
+          reject("Nie udało się pobrać tokenu Google");
         }
-        
-        // Update progress dla tego pliku
-        setUploadStatus(prev => prev.map(status => 
-          status.fileId === file.id 
-            ? { ...status, progress: currentProgress, status: currentProgress === 100 ? 'completed' : 'uploading' }
-            : status
-        ));
-      }, 100 + Math.random() * 200); // Losowy czas między updateami
-
-      // Symulacja błędu (1% szans)
-      if (Math.random() < 0.01) {
-        setTimeout(() => {
-          clearInterval(interval);
-          reject(new Error('Upload failed'));
-        }, 1000);
-      }
+      },
     });
-  };
+    tokenClient.requestAccessToken();
+  });
+}
 
-  // Rzeczywista funkcja Google Drive API (do zaimplementowania)
-  const uploadToGoogleDrive = async (file: MediaFile, folderId: string): Promise<string> => {
-    const token = localStorage.getItem('google_token');
-    if (!token) {
-      throw new Error('Brak tokenu Google');
-    }
+function createDriveFolder(token: string, folderName: string): Promise<string> {
+  return fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder'
+    })
+  })
+    .then(r => r.json())
+    .then(data => data.id);
+}
 
-    // Tutaj będzie rzeczywiste API call do Google Drive
-    // Na razie używamy mock
-    return mockUploadFile(file);
-  };
+function shareFolderAnyone(token: string, folderId: string): Promise<any> {
+  return fetch(`https://www.googleapis.com/drive/v3/files/${folderId}/permissions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      role: 'reader',
+      type: 'anyone'
+    })
+  }).then(r => r.json());
+}
 
-  // Funkcja do tworzenia folderu na Google Drive
-  const createDriveFolder = async (folderName: string): Promise<string> => {
-    const token = localStorage.getItem('google_token');
-    if (!token) {
-      throw new Error('Brak tokenu Google');
-    }
+function uploadFileToDrive(
+  token: string,
+  file: File,
+  folderId: string,
+  onProgress?: (percent: number) => void
+): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const metadata = {
+      name: file.name,
+      parents: [folderId]
+    };
 
-    // Mock tworzenia folderu
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const mockFolderId = `folder_${Date.now()}`;
-    const mockFolderUrl = `https://drive.google.com/drive/folders/${mockFolderId}`;
-    
-    setFolderUrl(mockFolderUrl);
-    return mockFolderId;
-  };
+    const boundary = '-------314159265358979323846';
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const close_delim = "\r\n--" + boundary + "--";
 
-  // Główna funkcja uploadowania plików
-  const uploadFiles = useCallback(async (files: MediaFile[]): Promise<string[]> => {
-    if (files.length === 0) return [];
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const contentType = file.type || 'application/octet-stream';
+      const base64Data = btoa(
+        new Uint8Array(e.target!.result as ArrayBuffer)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
 
-    setIsUploading(true);
+      const multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: ' + contentType + '\r\n' +
+        'Content-Transfer-Encoding: base64\r\n' +
+        '\r\n' +
+        base64Data +
+        close_delim;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.setRequestHeader('Content-Type', 'multipart/related; boundary="' + boundary + '"');
+
+      xhr.upload.onprogress = function (event) {
+        if (event.lengthComputable && typeof onProgress === 'function') {
+          let percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          resolve(JSON.parse(xhr.response));
+        } else {
+          reject(xhr.responseText);
+        }
+      };
+
+      xhr.onerror = function () {
+        reject("Błąd połączenia z Google Drive");
+      };
+
+      xhr.send(multipartRequestBody);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+export function useGoogleDriveUpload() {
+  const [progress, setProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderUrl, setFolderUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const uploadFiles = useCallback(async (files: MediaFile[]) => {
     setProgress(0);
-    
-    // Inicjalizuj status dla wszystkich plików
-    const initialStatus: UploadProgress[] = files.map(file => ({
-      fileId: file.id,
-      fileName: file.name,
-      progress: 0,
-      status: 'pending'
-    }));
-    setUploadStatus(initialStatus);
+    setIsUploading(true);
+    setError(null);
+    setFolderId(null);
+    setFolderUrl(null);
 
     try {
-      // Utwórz folder na Google Drive
-      const folderName = createFolderName();
-      console.log('Tworzenie folderu:', folderName);
-      const folderId = await createDriveFolder(folderName);
+      const token = await getAccessToken();
 
-      // Upload plików równolegle
-      const uploadPromises = files.map(async (file, index) => {
-        try {
-          setUploadStatus(prev => prev.map(status => 
-            status.fileId === file.id 
-              ? { ...status, status: 'uploading' }
-              : status
-          ));
+      // Nazwa folderu z datą i godziną
+      const now = new Date();
+      const folderName = `Zgłoszenie_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
 
-          const driveUrl = await uploadToGoogleDrive(file, folderId);
-          
-          setUploadStatus(prev => prev.map(status => 
-            status.fileId === file.id 
-              ? { ...status, status: 'completed', driveUrl, progress: 100 }
-              : status
-          ));
+      // Tworzenie folderu
+      const createdFolderId = await createDriveFolder(token, folderName);
+      setFolderId(createdFolderId);
+      setFolderUrl(`https://drive.google.com/drive/folders/${createdFolderId}`);
 
-          return driveUrl;
-        } catch (error) {
-          console.error(`Błąd uploadu ${file.name}:`, error);
-          setUploadStatus(prev => prev.map(status => 
-            status.fileId === file.id 
-              ? { ...status, status: 'error', progress: 0 }
-              : status
-          ));
-          throw error;
-        }
-      });
+      // Ustaw publiczny dostęp
+      await shareFolderAnyone(token, createdFolderId);
 
-      // Monitoruj ogólny progress
-      const progressInterval = setInterval(() => {
-        setUploadStatus(current => {
-          const totalProgress = current.reduce((sum, status) => sum + status.progress, 0);
-          const overallProgress = Math.round(totalProgress / current.length);
-          setProgress(overallProgress);
-          
-          if (overallProgress >= 100) {
-            clearInterval(progressInterval);
-          }
-          
-          return current;
+      // Uploaduj pliki do folderu
+      for (let i = 0; i < files.length; i++) {
+        await uploadFileToDrive(token, files[i].file, createdFolderId, percent => {
+          setProgress(Math.round(((i + percent / 100) / files.length) * 100));
         });
-      }, 200);
-
-      const results = await Promise.all(uploadPromises);
-      
-      clearInterval(progressInterval);
+      }
       setProgress(100);
       setIsUploading(false);
-      
-      console.log('Upload zakończony pomyślnie:', {
-        folderUrl,
-        files: results
-      });
 
-      return results;
-    } catch (error) {
-      console.error('Błąd podczas uploadu:', error);
+      return { folderId: createdFolderId, folderUrl: `https://drive.google.com/drive/folders/${createdFolderId}` };
+    } catch (err: any) {
+      setError(String(err));
       setIsUploading(false);
-      setProgress(0);
-      throw error;
+      throw err;
     }
-  }, [folderUrl]);
+  }, []);
 
   return {
     uploadFiles,
     progress,
     isUploading,
-    uploadStatus,
-    folderUrl
+    folderId,
+    folderUrl,
+    error,
   };
-};
+}
