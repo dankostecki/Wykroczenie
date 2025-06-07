@@ -1,10 +1,9 @@
-// src/components/ReportForm.tsx
 import React, { useState } from 'react';
-import { Shield, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { GoogleUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { LocationModal, Location } from './LocationModal';
-import { Header } from './Header'; // <- Nowy import!
+import { Header } from './Header';
 
 interface ReportFormProps {
   user: GoogleUser;
@@ -31,7 +30,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  // Obsługa zmiany pól tekstowych
   const handleInputChange = (field: keyof ReportData, value: string) => {
     setReportData(prev => ({
       ...prev,
@@ -39,7 +37,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }));
   };
 
-  // Po wybraniu lokalizacji z mapy
   const handleLocationSelect = (loc: Location) => {
     setReportData(prev => ({
       ...prev,
@@ -49,7 +46,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setIsLocationModalOpen(false);
   };
 
-  // Usunięcie lokalizacji
   const handleLocationRemove = () => {
     setReportData(prev => ({
       ...prev,
@@ -58,7 +54,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }));
   };
 
-  // Wysłanie formularza
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportData.title.trim()) {
@@ -87,7 +82,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Wspólny header */}
       <Header
         title="Szczegóły Incydentu"
         onSignOut={onSignOut}
@@ -95,7 +89,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         onBack={onBack}
       />
 
-      {/* Main */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
@@ -107,7 +100,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
 
           {/* Formularz */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Tytuł */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tytuł incydentu
@@ -121,8 +113,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 required
               />
             </div>
-
-            {/* Opis */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Opis zdarzenia
@@ -136,8 +126,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 required
               />
             </div>
-
-            {/* Lokalizacja */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Lokalizacja
@@ -185,8 +173,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 </button>
               )}
             </div>
-
-            {/* Pliki */}
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-3">
                 Dowody ({files.length})
@@ -208,8 +194,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 <p className="text-gray-500 text-sm">Brak załączonych plików</p>
               )}
             </div>
-
-            {/* Submit */}
             <div className="pt-4 border-t border-gray-200">
               <button
                 type="submit"
@@ -223,7 +207,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         </div>
       </main>
 
-      {/* Mapa-modal */}
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
