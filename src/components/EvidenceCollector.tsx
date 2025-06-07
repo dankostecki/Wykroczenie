@@ -155,17 +155,16 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <h2 className="text-xl font-bold text-white mb-1">📸 Zbierz Dowody</h2>
             <p className="text-blue-100 text-sm">
               Zrób zdjęcia lub nagraj filmy dokumentujące wykroczenie
             </p>
           </div>
 
-          <div className="p-4 border-b border-gray-200 space-y-2">
+          <div className="p-4 border-b border-gray-200 space-y-4">
   {/* Wiersz 1: Dodaj pliki */}
   <button
     onClick={selectFiles}
-    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
+    className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
   >
     <Upload className="w-5 h-5" />
     <span>Dodaj pliki</span>
@@ -175,14 +174,14 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   <div className="flex gap-2">
     <button
       onClick={takePhoto}
-      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
+      className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
     >
       <Camera className="w-5 h-5" />
       <span>Zrób zdjęcie</span>
     </button>
     <button
       onClick={startVideoRecording}
-      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
+      className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
     >
       <Video className="w-5 h-5" />
       <span>Nagraj film</span>
@@ -210,16 +209,16 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
             </div>
 
             {files.length === 0 ? (
-              <div className="text-center py-12">
-                <Plus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">
-                  Nie dodano jeszcze żadnych plików
-                </p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
-                </p>
-              </div>
-            ) : (
+  <div className="text-center py-3">
+    <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+    <p className="text-gray-500 text-sm">
+      Nie dodano jeszcze żadnych plików
+    </p>
+    <p className="text-gray-400 text-xs mt-1">
+      Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
+    </p>
+  </div>
+) : (
               <div className="grid grid-cols-4 lg:grid-cols-5 gap-4">
                 {files.map(file => (
                   <FileThumbnail key={file.id} mediaFile={file} onRemove={removeFile} />
