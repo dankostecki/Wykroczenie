@@ -4,7 +4,7 @@ import { GoogleUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
 import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
-import { Header } from './Header'; // <- nowy import!
+import { Header } from './Header';
 
 interface EvidenceCollectorProps {
   user: GoogleUser;
@@ -93,37 +93,33 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
     setCurrentStep('evidence');
   };
 
+  // --- KLUCZOWE: Header tylko na ekranie dowodów ---
   if (currentStep === 'report') {
     return (
-      <>
-        <Header
-          title="Zgłoszenie Wykroczenia"
-          onSignOut={onSignOut}
-          showBack={true}
-          onBack={handleBackToEvidence}
-        />
-        <ReportForm
-          user={user}
-          files={files}
-          onSignOut={onSignOut}
-          onBack={handleBackToEvidence}
-          uploadProgress={progress}
-          isUploading={isUploading}
-        />
-      </>
+      <ReportForm
+        user={user}
+        files={files}
+        onSignOut={onSignOut}
+        onBack={handleBackToEvidence}
+        uploadProgress={progress}
+        isUploading={isUploading}
+      />
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header
-        title="Zbieranie Dowodów"
+        title={
+          <span className="flex items-center gap-2">
+            <Camera className="w-8 h-8 text-blue-600" />
+            Zbieranie Dowodów
+          </span>
+        }
         onSignOut={onSignOut}
         showBack={false}
-        showCamera={true}
       />
 
-      {/* Main content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
