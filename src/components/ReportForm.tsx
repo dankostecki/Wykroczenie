@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin } from 'lucide-react';
-import { GoogleUser, MediaFile, ReportData } from '../types';
+import { GoogleAllUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { LocationModal, Location } from './LocationModal';
 import { Header } from './Header';
