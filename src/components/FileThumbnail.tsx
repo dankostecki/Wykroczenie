@@ -1,76 +1,58 @@
 import React from 'react';
-import { Image, Film, FileText, X } from 'lucide-react';
+import { X, FileText, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import { MediaFile } from '../types';
 
 interface FileThumbnailProps {
   mediaFile: MediaFile;
-  onRemove: (id: string) => void;
+  onRemove?: (id: string) => void;
 }
 
-// Funkcja do formatowania rozmiaru pliku
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
 export const FileThumbnail: React.FC<FileThumbnailProps> = ({ mediaFile, onRemove }) => {
-  const getIcon = () => {
-    switch (mediaFile.type) {
-      case 'image':
-        return <Image className="w-8 h-8 text-blue-600" />;
-      case 'video':
-        return <Film className="w-8 h-8 text-purple-600" />;
-      default:
-        return <FileText className="w-8 h-8 text-gray-600" />;
+  const renderPreview = () => {
+    if (mediaFile.type === 'image') {
+      return (
+        <img
+          src={mediaFile.url}
+          alt={mediaFile.name}
+          className="object-cover w-full h-full rounded-lg"
+          style={{ aspectRatio: '1 / 1', minHeight: 0, minWidth: 0 }}
+        />
+      );
     }
+    if (mediaFile.type === 'video') {
+      return (
+        <video
+          src={mediaFile.url}
+          controls={false}
+          className="object-cover w-full h-full rounded-lg"
+          style={{ aspectRatio: '1 / 1', minHeight: 0, minWidth: 0 }}
+        >
+          Sorry, your browser does not support embedded videos.
+        </video>
+      );
+    }
+    // document
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-full aspect-square bg-gray-100 rounded-lg">
+        <FileText className="w-8 h-8 text-gray-400 mb-1" />
+        <span className="text-xs text-gray-500 text-center truncate w-full px-1">{mediaFile.name}</span>
+      </div>
+    );
   };
 
   return (
-    <div className="relative group">
-      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-colors">
-        {mediaFile.type === 'image' ? (
-          <img
-            src={mediaFile.url}
-            alt={mediaFile.name}
-            className="w-full h-full object-cover"
-          />
-        ) : mediaFile.type === 'video' ? (
-          <div className="w-full h-full relative">
-            <video
-              src={mediaFile.url}
-              className="w-full h-full object-cover"
-              muted
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
-              <Film className="w-12 h-12 text-white" />
-            </div>
-          </div>
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-2">
-            {getIcon()}
-            <span className="text-xs text-gray-600 mt-1 text-center truncate w-full">
-              {mediaFile.name}
-            </span>
-          </div>
-        )}
-        
-        {/* Przycisk usuwania */}
+    <div className="relative group w-full aspect-square rounded-lg overflow-hidden shadow border bg-white">
+      {renderPreview()}
+      {/* Krzyżyk tylko jeśli jest onRemove */}
+      {onRemove && (
         <button
+          type="button"
           onClick={() => onRemove(mediaFile.id)}
-          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+          className="absolute top-1 right-1 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-opacity opacity-80 group-hover:opacity-100"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 text-red-500" />
         </button>
-      </div>
-      
-      {/* Informacje o pliku przy hover */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="truncate">{mediaFile.name}</div>
-        <div>{formatFileSize(mediaFile.size)}</div>
-      </div>
+      )}
     </div>
   );
 };
