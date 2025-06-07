@@ -121,14 +121,13 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-               Opisz wydarzenie
+               Opis zdarzenia
               </label>
               <textarea
                 rows={6}
                 value={reportData.description}
                 onChange={e => handleInputChange('description', e.target.value)}
-                placeholder="W celu umożliwienia policjantom skutecznego ścigania sprawców wykroczeń proszę przekazać wraz z materiałem filmowym następujące informacje:
-data, godzina i miejsce zdarzenia (miejscowość, nr drogi/ulica), dane dotyczące sprawcy/pojazdu sprawcy, dane zgłaszającego: imię i nazwisko, adres do korespondencji, tel. kontaktowy."
+                placeholder="Podaj także miejsce: zdarzenia, dane dotyczące sprawcy/pojazdu sprawcy, dane zgłaszającego: imię i nazwisko, adres do korespondencji, tel. kontaktowy."
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 required
               />
@@ -146,7 +145,7 @@ data, godzina i miejsce zdarzenia (miejscowość, nr drogi/ulica), dane dotyczą
                 <span className="text-gray-700 truncate">
                   {reportData.location
                     ? reportData.location
-                    : 'Wybierz lokalizację na mapie (opcjonalnie)'}
+                    : 'Wybierz lokalizację na mapie'}
                 </span>
               </button>
               {reportData.location && (
