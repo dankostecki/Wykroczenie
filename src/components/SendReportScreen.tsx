@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// Przykładowe komendy policji — możesz podmienić na własne z backendu lub pliku
+// Przykładowe komendy policji — możesz podmienić na własne lub pobierać z backendu
 const POLICE_DEPARTMENTS = [
   { name: "Komenda Miejska Policji w Warszawie", email: "warszawa@policja.gov.pl" },
   { name: "Komenda Miejska Policji w Krakowie", email: "krakow@policja.gov.pl" },
@@ -10,7 +10,6 @@ const POLICE_DEPARTMENTS = [
 
 const LOCAL_KEY = "uzywaneAdresy";
 
-// Helpers dla localStorage
 function getLocalEmails(): string[] {
   try {
     const data = localStorage.getItem(LOCAL_KEY);
@@ -23,7 +22,6 @@ function setLocalEmails(emails: string[]) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(emails));
 }
 
-// Walidacja e-maili
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -31,8 +29,7 @@ function isValidEmail(email: string) {
 const MOCK_MESSAGE =
   "Twoje zgłoszenie zostanie przekazane do odpowiednich służb.\nZałączony folder Drive:\nhttps://drive.google.com/drive/folders/abcd1234567890verylonglinkabcdef1234567";
 
-export default function SendReportScreen() {
-  // Stan aplikacji
+export const SendReportScreen: React.FC = () => {
   const [recipientType, setRecipientType] = useState<"police" | "custom">("police");
   const [selectedDept, setSelectedDept] = useState<string>("");
   const [customEmailInput, setCustomEmailInput] = useState("");
@@ -42,12 +39,10 @@ export default function SendReportScreen() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Wczytaj historię z localStorage na start
   useEffect(() => {
     setLocalEmailsState(getLocalEmails());
   }, []);
 
-  // Podpowiedzi z historii, dynamicznie na podstawie wpisywanego tekstu
   useEffect(() => {
     if (customEmailInput.length > 1) {
       setEmailSuggestions(
@@ -63,13 +58,11 @@ export default function SendReportScreen() {
     }
   }, [customEmailInput, localEmails, addressesToSend]);
 
-  // Zapisz nową historię adresów do localStorage i state
   const updateLocalEmails = (emails: string[]) => {
     setLocalEmailsState(emails);
     setLocalEmails(emails);
   };
 
-  // Dodaj adres do listy adresatów (i do historii, jeśli nowy)
   const handleAddEmail = (email: string) => {
     if (!isValidEmail(email)) {
       setEmailError("Niepoprawny adres email.");
@@ -87,7 +80,6 @@ export default function SendReportScreen() {
     inputRef.current?.focus();
   };
 
-  // Dodaj z dropdowna komendy policji
   const handleAddPolice = (email: string) => {
     if (!addressesToSend.includes(email)) {
       setAddressesToSend((prev) => [...prev, email]);
@@ -95,18 +87,15 @@ export default function SendReportScreen() {
     setSelectedDept("");
   };
 
-  // Usuń adres z listy do wysyłki
   const handleRemoveAddress = (email: string) => {
     setAddressesToSend((prev) => prev.filter((e) => e !== email));
   };
 
-  // Usuń adres z localStorage
   const handleRemoveLocalEmail = (email: string) => {
     const updated = localEmails.filter((e) => e !== email);
     updateLocalEmails(updated);
   };
 
-  // Obsługa Entera dla własnego maila
   const handleEmailInputKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && customEmailInput.length > 3) {
       handleAddEmail(customEmailInput.trim());
@@ -262,7 +251,6 @@ export default function SendReportScreen() {
         <label className="block font-medium text-gray-700 mb-1">Podgląd wiadomości:</label>
         <div className="rounded-xl border bg-gray-50 p-4 whitespace-pre-wrap break-words" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
           {MOCK_MESSAGE.split(/\s/).map((word, idx) => {
-            // Link do drive — automatyczne wykrywanie
             if (word.startsWith("http")) {
               return (
                 <a
@@ -294,4 +282,4 @@ export default function SendReportScreen() {
       </button>
     </div>
   );
-}
+};
