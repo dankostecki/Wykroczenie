@@ -15,8 +15,8 @@ interface SendReportScreenProps {
   onSend: (recipients: string[]) => Promise<void>;
   isSending: boolean;
   sendError?: string | null;
-  onSignOut?: () => void;
-  onBack?: () => void;
+  onSignOut: () => void;
+  onBack: () => void;
 }
 
 export const SendReportScreen: React.FC<SendReportScreenProps> = ({
