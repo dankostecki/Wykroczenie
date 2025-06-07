@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGoogleAuth } from './hooks/useGoogleAllLogin';
+import { useGoogleAllLogin } from './hooks/useGoogleAllLogin';
 import { LoginComponent } from './components/LoginComponent';
 import { EvidenceCollector } from './components/EvidenceCollector';
 
