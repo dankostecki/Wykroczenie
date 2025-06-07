@@ -1,9 +1,11 @@
 // Typy dla Google Identity Services
+
 export interface GoogleCredentialResponse {
   credential: string;
   select_by: string;
 }
 
+// Typ klasycznego GoogleUser (z One Tap JWT)
 export interface GoogleUser {
   iss: string;
   sub: string;
@@ -16,6 +18,17 @@ export interface GoogleUser {
   picture: string;
   given_name: string;
   family_name: string;
+}
+
+// Typ uproszczony - profil z endpointu userinfo (klasyczny OAuth)
+export interface GoogleAllUser {
+  email: string;
+  name: string;
+  picture?: string;
+  given_name?: string;
+  family_name?: string;
+  locale?: string;
+  [key: string]: any;
 }
 
 export interface MediaFile {
