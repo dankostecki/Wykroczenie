@@ -5,6 +5,48 @@ import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
 import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
 import { Header } from './Header';
+import { SendReportScreen } from './SendReportScreen';
+import { ReportSuccess } from './ReportSuccess';
+
+// Funkcja do wysyłania maila przez Gmail API (prosty przykład)
+async function sendGmail({
+  accessToken,
+  recipients,
+  subject,
+  body,
+}: {
+  accessToken: string;
+  recipients: string[];
+  subject: string;
+  body: string;
+}) {
+  // Składamy "raw" maila jako base64
+  const boundary = "--boundary";
+  const to = recipients.join(', ');
+  const message =
+    `To: ${to}\r\n` +
+    `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=\r\n` +
+    "Content-Type: text/plain; charset=utf-8\r\n" +
+    "\r\n" +
+    body;
+
+  const raw = btoa(unescape(encodeURIComponent(message)));
+
+  const res = await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ raw }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error("Nie udało się wysłać maila przez Gmail API");
+  }
+}
 
 interface EvidenceCollectorProps {
   user: GoogleAllUser;
@@ -12,15 +54,35 @@ interface EvidenceCollectorProps {
   onSignOut: () => void;
 }
 
-export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, accessToken, onSignOut }) => {
+export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
+  user,
+  accessToken,
+  onSignOut,
+}) => {
   const [files, setFiles] = useState<MediaFile[]>([]);
-  const [currentStep, setCurrentStep] = useState<'evidence' | 'report'>('evidence');
-  
+  const [currentStep, setCurrentStep] = useState<
+    'evidence' | 'report' | 'send' | 'success'
+  >('evidence');
+
+  const [reportData, setReportData] = useState<{
+    title: string;
+    description: string;
+    location?: string;
+    coordinates?: { lat: number; lng: number };
+  }>({ title: '', description: '', location: '', coordinates: undefined });
+
+  const [folderUrl, setFolderUrl] = useState<string>('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const { uploadFiles, progress, isUploading } = useGoogleDriveUpload();
+  const { uploadFiles, progress, isUploading, folderId } = useGoogleDriveUpload();
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -41,7 +103,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, acce
         type: fileType,
         url,
         name: file.name,
-        size: file.size
+        size: file.size,
       };
       setFiles(prev => [...prev, mediaFile]);
     });
@@ -75,30 +137,209 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, acce
     }
   };
 
+  // Po kliknięciu "Kontynuuj zgłoszenie"
   const handleContinueToReport = async () => {
     if (files.length === 0) {
       alert('Dodaj przynajmniej jeden plik jako dowód incydentu');
       return;
     }
     setCurrentStep('report');
+    setUploadError(null);
+
     try {
-      // KLUCZOWA ZMIANA — przekazujesz accessToken:
       if (!accessToken) {
-        alert('Brak tokenu Google, spróbuj się ponownie zalogować.');
+        setUploadError('Brak tokenu Google – zaloguj się ponownie.');
         return;
       }
-      await uploadFiles(files, accessToken);
-      console.log('Pliki zostały przesłane na Google Drive');
-    } catch (error) {
-      console.error('Błąd podczas przesyłania plików:', error);
-      alert('Wystąpił błąd podczas przesyłania plików na Google Drive. Spróbuj ponownie.');
+      // Upload plików na Drive (tworzy folder, wrzuca pliki)
+      const uploadResult = await uploadFiles(files, accessToken);
+      setFolderUrl(uploadResult.folderUrl);
+    } catch (error: any) {
+      setUploadError(String(error));
     }
   };
 
-  const handleBackToEvidence = () => {
+  // Po wypełnieniu formularza w ReportForm
+  const handleSubmitForm = (data: {
+    title: string;
+    description: string;
+    location?: string;
+    coordinates?: { lat: number; lng: number };
+  }) => {
+    setReportData(data);
+    setCurrentStep('send');
+  };
+
+  // Wysyłka maila
+  const handleSendReport = async (recipients: string[]) => {
+    if (!accessToken) {
+      setSendError('Brak tokenu Google. Zaloguj się ponownie.');
+      return;
+    }
+    setSending(true);
+    setSendError(null);
+    try {
+      let body = `${reportData.description}\n\n`;
+      if (reportData.location) {
+        body += `Lokalizacja: ${reportData.location}`;
+        if (reportData.coordinates) {
+          body += ` (${reportData.coordinates.lat}, ${reportData.coordinates.lng})`;
+        }
+        body += '\n';
+      }
+      body += `Dowody: ${folderUrl}`;
+
+      await sendGmail({
+        accessToken,
+        recipients,
+        subject: reportData.title,
+        body,
+      });
+      setSentTo(recipients);
+      setCurrentStep('success');
+    } catch (err: any) {
+      setSendError(String(err));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Reset wszystkiego po sukcesie
+  const handleNewReport = () => {
+    setFiles([]);
+    setReportData({ title: '', description: '', location: '', coordinates: undefined });
+    setFolderUrl('');
+    setUploadError(null);
+    setSendError(null);
+    setSentTo([]);
     setCurrentStep('evidence');
   };
 
+  // KROK 1: DOWODY
+  if (currentStep === 'evidence') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Header title="Zbieranie Dowodów" onSignOut={onSignOut} showBack={false} />
+
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+              <p className="text-blue-100 text-sm">
+                Zrób zdjęcia lub nagraj filmy dokumentujące wykroczenie
+              </p>
+            </div>
+
+            <div className="p-4 border-b border-gray-200 space-y-4">
+              {/* Dodaj pliki */}
+              <button
+                onClick={selectFiles}
+                className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
+              >
+                <Upload className="w-5 h-5" />
+                <span>Dodaj pliki</span>
+              </button>
+
+              {/* Zrób zdjęcie / Nagraj film */}
+              <div className="flex gap-4">
+                <button
+                  onClick={takePhoto}
+                  className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Zrób zdjęcie</span>
+                </button>
+                <button
+                  onClick={startVideoRecording}
+                  className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
+                >
+                  <Video className="w-5 h-5" />
+                  <span>Nagraj film</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Twoje pliki ({files.length})
+                </h3>
+                {files.length > 0 && (
+                  <button
+                    onClick={() => {
+                      files.forEach(file => URL.revokeObjectURL(file.url));
+                      setFiles([]);
+                    }}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    Usuń wszystkie
+                  </button>
+                )}
+              </div>
+              {files.length === 0 ? (
+                <div className="text-center py-3">
+                  <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">
+                    Nie dodano jeszcze żadnych plików
+                  </p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 lg:grid-cols-5 gap-4">
+                  {files.map(file => (
+                    <FileThumbnail key={file.id} mediaFile={file} onRemove={removeFile} />
+                  ))}
+                </div>
+              )}
+              {uploadError && (
+                <div className="text-red-600 mt-4 text-sm">{uploadError}</div>
+              )}
+            </div>
+            {files.length > 0 && (
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <button
+                  onClick={handleContinueToReport}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+                >
+                  <span>Kontynuuj zgłoszenie</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+          onChange={e => handleFileSelect(e.target.files)}
+          className="hidden"
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={e => handleFileSelect(e.target.files)}
+          className="hidden"
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          capture="environment"
+          onChange={e => handleFileSelect(e.target.files)}
+          className="hidden"
+        />
+      </div>
+    );
+  }
+
+  // KROK 2: FORMULARZ ZGŁOSZENIA
   if (currentStep === 'report') {
     return (
       <ReportForm
@@ -106,139 +347,42 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, acce
         files={files}
         accessToken={accessToken}
         onSignOut={onSignOut}
-        onBack={handleBackToEvidence}
+        onBack={() => setCurrentStep('evidence')}
         uploadProgress={progress}
         isUploading={isUploading}
+        onSubmit={handleSubmitForm} // Dodaj callback submit
       />
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header
-        title="Zbieranie Dowodów"
-        onSignOut={onSignOut}
-        showBack={false}
+  // KROK 3: WYBÓR ADRESATÓW I WYSYŁKA
+  if (currentStep === 'send') {
+    return (
+      <SendReportScreen
+        title={reportData.title}
+        description={reportData.description}
+        location={reportData.location}
+        folderUrl={folderUrl}
+        onSend={handleSendReport}
+        isSending={sending}
+        sendError={sendError}
       />
+    );
+  }
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Sekcja nagłówka */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <p className="text-blue-100 text-sm">
-              Zrób zdjęcia lub nagraj filmy dokumentujące wykroczenie
-            </p>
-          </div>
-
-          <div className="p-4 border-b border-gray-200 space-y-4">
-            {/* Wiersz 1: Dodaj pliki */}
-            <button
-              onClick={selectFiles}
-              className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-green-300 rounded-lg bg-white text-green-700 hover:bg-green-50 transition font-medium"
-            >
-              <Upload className="w-5 h-5" />
-              <span>Dodaj pliki</span>
-            </button>
-
-            {/* Wiersz 2: Zrób zdjęcie | Nagraj film */}
-            <div className="flex gap-4">
-              <button
-                onClick={takePhoto}
-                className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
-              >
-                <Camera className="w-5 h-5" />
-                <span>Zrób zdjęcie</span>
-              </button>
-              <button
-                onClick={startVideoRecording}
-                className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-purple-300 rounded-lg bg-white text-purple-700 hover:bg-purple-50 transition font-medium"
-              >
-                <Video className="w-5 h-5" />
-                <span>Nagraj film</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Sekcja z plikami */}
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                Twoje pliki ({files.length})
-              </h3>
-              {files.length > 0 && (
-                <button
-                  onClick={() => {
-                    files.forEach(file => URL.revokeObjectURL(file.url));
-                    setFiles([]);
-                  }}
-                  className="text-sm text-red-600 hover:text-red-700 font-medium"
-                >
-                  Usuń wszystkie
-                </button>
-              )}
-            </div>
-
-            {files.length === 0 ? (
-              <div className="text-center py-3">
-                <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">
-                  Nie dodano jeszcze żadnych plików
-                </p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Użyj przycisków powyżej, aby dodać zdjęcia, filmy lub dokumenty
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 lg:grid-cols-5 gap-4">
-                {files.map(file => (
-                  <FileThumbnail key={file.id} mediaFile={file} onRemove={removeFile} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Przycisk kontynuacji */}
-          {files.length > 0 && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <button 
-                onClick={handleContinueToReport}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-              >
-                <span>Kontynuuj zgłoszenie</span>
-                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Ukryte inputy */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-        onChange={(e) => handleFileSelect(e.target.files)}
-        className="hidden"
+  // KROK 4: POTWIERDZENIE
+  if (currentStep === 'success') {
+    return (
+      <ReportSuccess
+        sentTo={sentTo}
+        title={reportData.title}
+        description={reportData.description}
+        location={reportData.location}
+        folderUrl={folderUrl}
+        onNewReport={handleNewReport}
       />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => handleFileSelect(e.target.files)}
-        className="hidden"
-      />
-      <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/*"
-        capture="environment"
-        onChange={(e) => handleFileSelect(e.target.files)}
-        className="hidden"
-      />
-    </div>
-  );
+    );
+  }
+
+  return null;
 };
