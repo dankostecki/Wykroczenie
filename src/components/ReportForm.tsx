@@ -13,6 +13,12 @@ interface ReportFormProps {
   onBack: () => void;
   uploadProgress: number;
   isUploading: boolean;
+  onSubmit: (data: {
+    title: string;
+    description: string;
+    location?: string;
+    coordinates?: { lat: number; lng: number };
+  }) => void;
 }
 
 export const ReportForm: React.FC<ReportFormProps> = ({
@@ -23,6 +29,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   onBack,
   uploadProgress,
   isUploading,
+  onSubmit,
 }) => {
   const [reportData, setReportData] = useState<ReportData>({
     title: '',
@@ -56,6 +63,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }));
   };
 
+  // Wysyłka danych do rodzica (EvidenceCollector) przez onSubmit!
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportData.title.trim()) {
@@ -66,22 +74,16 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       alert('Proszę opisać co się stało');
       return;
     }
-    // Lokalizacja jest opcjonalna!
-    // if (!reportData.location.trim()) {
-    //   alert('Proszę wybrać lokalizację incydentu na mapie');
-    //   return;
-    // }
-    console.log('Zgłoszenie:', {
-      ...reportData,
-      files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
-      user: user.email,
-      accessToken,
+    onSubmit({
+      title: reportData.title,
+      description: reportData.description,
+      location: reportData.location,
+      coordinates: reportData.coordinates,
     });
-    alert('Zgłoszenie zostało przesłane pomyślnie!');
   };
 
   const removeFile = (id: string) => {
-    // Do zaimplementowania: przekazanie usuwania pliku do rodzica, jeśli potrzeba
+    // Pliki można usuwać tylko w EvidenceCollector
   };
 
   return (
