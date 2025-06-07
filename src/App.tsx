@@ -1,11 +1,11 @@
 import React from 'react';
-import { useGoogleAuth } from './hooks/useGoogleAuth';
+import { useGoogleAuth } from './hooks/useGoogleAllLogin';
 import { LoginComponent } from './components/LoginComponent';
 import { EvidenceCollector } from './components/EvidenceCollector';
 
 // Główny komponent aplikacji
 const App: React.FC = () => {
-  const { user, loading, signIn, signOut } = useGoogleAuth();
+  const { user, loading, signInWithGoogle, signOut, accessToken, error } = useGoogleAllLogin();
 
   if (loading) {
     return (
@@ -21,9 +21,9 @@ const App: React.FC = () => {
   return (
     <>
       {user ? (
-        <EvidenceCollector user={user} onSignOut={signOut} />
+        <EvidenceCollector user={user} accessToken={accessToken} onSignOut={signOut} />
       ) : (
-        <LoginComponent onSignIn={signIn} loading={loading} />
+        <LoginComponent onSignIn={signInWithGoogle} loading={loading} />
       )}
     </>
   );
