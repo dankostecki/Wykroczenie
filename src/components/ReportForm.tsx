@@ -127,7 +127,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 rows={6}
                 value={reportData.description}
                 onChange={e => handleInputChange('description', e.target.value)}
-                placeholder="Podaj także miejsce: zdarzenia, dane dotyczące sprawcy/pojazdu sprawcy, dane zgłaszającego: imię i nazwisko, adres do korespondencji, tel. kontaktowy."
+                placeholder="Podaj opis i miejsce zdarzenia, dane dotyczące sprawcy/pojazdu sprawcy oraz Twoje dane: imię i nazwisko, adres do korespondencji, tel. kontaktowy."
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                 required
               />
