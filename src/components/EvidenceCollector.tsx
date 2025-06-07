@@ -12,7 +12,7 @@ interface EvidenceCollectorProps {
   onSignOut: () => void;
 }
 
-export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSignOut }) => {
+export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, accessToken, onSignOut }) => {
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [currentStep, setCurrentStep] = useState<'evidence' | 'report'>('evidence');
   
@@ -100,6 +100,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
       <ReportForm
         user={user}
         files={files}
+        accessToken={accessToken}         // <-- DODANE!
         onSignOut={onSignOut}
         onBack={handleBackToEvidence}
         uploadProgress={progress}
@@ -111,10 +112,10 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header
-  title="Zbieranie Dowodów"
-  onSignOut={onSignOut}
-  showBack={false}
-/>
+        title="Zbieranie Dowodów"
+        onSignOut={onSignOut}
+        showBack={false}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
