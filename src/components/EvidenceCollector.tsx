@@ -357,6 +357,8 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         onSend={handleSendReport}
         isSending={sending}
         sendError={sendError}
+        onSignOut={onSignOut}                 // <-- wymagany props!
+        onBack={() => setCurrentStep('report')} // <-- wymagany props!
       />
     );
   }
@@ -370,6 +372,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         location={reportData.location}
         folderUrl={folderUrl}
         onNewReport={handleNewReport}
+        onSignOut={onSignOut} // <-- wymagany props!
       />
     );
   }
