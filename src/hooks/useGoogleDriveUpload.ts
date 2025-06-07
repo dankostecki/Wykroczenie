@@ -4,13 +4,6 @@ import { MediaFile } from "../types";
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
-// To sprawia, że TypeScript nie będzie się czepiał Google Identity Services
-declare global {
-  interface Window {
-    google: any;
-  }
-}
-
 function getAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     // @ts-ignore
@@ -146,19 +139,15 @@ export function useGoogleDriveUpload() {
     try {
       const token = await getAccessToken();
 
-      // Nazwa folderu z datą i godziną
       const now = new Date();
       const folderName = `Zgłoszenie_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
 
-      // Tworzenie folderu
       const createdFolderId = await createDriveFolder(token, folderName);
       setFolderId(createdFolderId);
       setFolderUrl(`https://drive.google.com/drive/folders/${createdFolderId}`);
 
-      // Ustaw publiczny dostęp
       await shareFolderAnyone(token, createdFolderId);
 
-      // Uploaduj pliki do folderu
       for (let i = 0; i < files.length; i++) {
         await uploadFileToDrive(token, files[i].file, createdFolderId, percent => {
           setProgress(Math.round(((i + percent / 100) / files.length) * 100));
