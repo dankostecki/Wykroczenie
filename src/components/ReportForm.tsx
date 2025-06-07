@@ -120,10 +120,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Sekcja nagłówka */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-            <div className="flex items-center">
-              <Shield className="w-6 h-6 text-white mr-2" />
-              <h2 className="text-xl font-bold text-white">Szczegóły Incydentu</h2>
-            </div>
             <p className="text-blue-100 text-sm mt-1">
               Podaj szczegóły dotyczące zdarzenia
             </p>
