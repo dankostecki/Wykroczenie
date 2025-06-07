@@ -6,7 +6,7 @@ import { LocationModal, Location } from './LocationModal';
 import { Header } from './Header';
 
 interface ReportFormProps {
-  user: GoogleUser;
+  user: GoogleAllUser;
   files: MediaFile[];
   accessToken: string | null; // <-- DODANO TUTAJ!
   onSignOut: () => void;
