@@ -9,10 +9,23 @@ interface Recipient {
 }
 
 const POLICE_DEPARTMENTS: Recipient[] = [
-  { label: "Komenda Miejska Policji w Warszawie", email: "warszawa@policja.gov.pl" },
-  { label: "Komenda Miejska Policji w Krakowie", email: "krakow@policja.gov.pl" },
-  { label: "Komenda Powiatowa Policji w Łomży", email: "lomza@policja.gov.pl" },
-  { label: "Komenda Powiatowa Policji w Gdańsku", email: "gdansk@policja.gov.pl" },
+  { label: "Białystok:", email: "stopagresjidrogowej.kwp@bk.policja.gov.pl" },
+  { label: "Bydgoszcz:", email: "stopagresjidrogowej-kwp@bg.policja.gov.pl" },
+  { label: "Gdańsk:", email: "stopagresjidrogowej@gd.policja.gov.pl" },
+  { label: "Gorzów Wlkp.:", email: "stopagresjidrogowej@go.policja.gov.pl" },
+  { label: "Katowice:", email: "stopagresjidrogowej@ka.policja.gov.pl" },
+  { label: "Kielce:", email: "stopagresjidrogowej@ki.policja.gov.pl" },
+  { label: "Kraków:", email: "stopagresjidrogowej@malopolska.policja.gov.pl" },
+  { label: "Lublin:", email: "stopagresjidrogowej@lu.policja.gov.pl" },
+  { label: "Łódź:", email: "stopagresjidrogowej@ld.policja.gov.pl" },
+  { label: "Olsztyn:", email: "stopagresjidrogowej@ol.policja.gov.pl" },
+  { label: "Opole:", email: "problemdrogowy@op.policja.gov.pl" },
+  { label: "Poznań:", email: "stopagresjidrogowej@po.policja.gov.pl" },
+  { label: "Radom:", email: "stopagresjidrogowej@ra.policja.gov.pl" },
+  { label: "Rzeszów:", email: "stopagresjidrogowej@rz.policja.gov.pl" },
+  { label: "Szczecin:", email: "stopagresjidrogowej@sc.policja.gov.pl" },
+  { label: "Wrocław:", email: "stopagresjidrogowej@wr.policja.gov.pl" },
+  { label: "Warszawa:", email: "stopagresjidrogowej@ksp.policja.gov.pl" }
   // ...dodaj więcej jeśli trzeba
 ];
 
@@ -159,11 +172,8 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
 
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-          <h2 className="flex items-center text-2xl font-semibold mb-2">
-            <span className="mr-2">✉️</span> Wyślij zgłoszenie
-          </h2>
           <p className="text-gray-600 mb-6 text-sm">
-            Wybierz odbiorcę zgłoszenia (komenda policji lub własny adres e-mail).
+            Wybierz odbiorcę zgłoszenia:
           </p>
 
           {/* Nowy wybór odbiorcy */}
@@ -177,7 +187,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                   }`}
                 onClick={() => setRecipientType("police")}
               >
-                Komenda Policji
+                Agresja drogowa
               </button>
               <button
                 type="button"
@@ -187,7 +197,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                   }`}
                 onClick={() => setRecipientType("custom")}
               >
-                Własny email
+                Podaj email
               </button>
             </div>
             {/* Jedno pole, zależnie od wyboru */}
