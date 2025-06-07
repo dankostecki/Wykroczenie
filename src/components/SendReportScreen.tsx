@@ -64,7 +64,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
         <h2 className="flex items-center text-2xl font-semibold mb-2">
           <span className="mr-2">✉️</span> Wyślij zgłoszenie
