@@ -169,7 +169,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                 <div className="grid grid-cols-4 gap-4">
                   {files.map(file => (
                     <div key={file.id} className="relative">
-                      <FileThumbnail mediaFile={file} onRemove={removeFile} />
+                      <FileThumbnail mediaFile={file} />
                       {isUploading && (
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md">
                           <span className="text-white text-xs">Przesyłanie…</span>
