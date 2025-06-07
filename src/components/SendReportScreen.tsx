@@ -26,7 +26,6 @@ const POLICE_DEPARTMENTS: Recipient[] = [
   { label: "Szczecin:", email: "stopagresjidrogowej@sc.policja.gov.pl" },
   { label: "Wrocław:", email: "stopagresjidrogowej@wr.policja.gov.pl" },
   { label: "Warszawa:", email: "stopagresjidrogowej@ksp.policja.gov.pl" }
-  // ...dodaj więcej jeśli trzeba
 ];
 
 interface SendReportScreenProps {
@@ -49,6 +48,7 @@ function getLocalEmails(): string[] {
     return [];
   }
 }
+
 function setLocalEmails(emails: string[]) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(emails));
 }
@@ -162,7 +162,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header
         title="Wyślij zgłoszenie"
         onSignOut={onSignOut}
@@ -170,168 +170,206 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
         onBack={onBack}
       />
 
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-         <div className="bg-blue-600 text-white text-xl font-bold px-6 py-4 rounded-t-xl flex items-center gap-2 mb-6">
-  <span>Wybierz odbiorcę zgłoszenia:</span>
-</div>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Sekcja nagłówka - zgodna z pozostałymi komponentami */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <p className="text-blue-100 text-sm">
+              Wybierz odbiorców zgłoszenia i wyślij raport
+            </p>
+          </div>
 
-          {/* Nowy wybór odbiorcy */}
-          <div className="mb-6">
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <button
-                type="button"
-                className={`flex items-center justify-center py-2 rounded-xl border w-full transition ${recipientType === "police"
-                  ? "border-blue-600 bg-blue-50 font-semibold"
-                  : "border-gray-300 bg-white"
-                  }`}
-                onClick={() => setRecipientType("police")}
-              >
-                Agresja drogowa
-              </button>
-              <button
-                type="button"
-                className={`flex items-center justify-center py-2 rounded-xl border w-full transition ${recipientType === "custom"
-                  ? "border-blue-600 bg-blue-50 font-semibold"
-                  : "border-gray-300 bg-white"
-                  }`}
-                onClick={() => setRecipientType("custom")}
-              >
-                Podaj email
-              </button>
-            </div>
-            {/* Jedno pole, zależnie od wyboru */}
-            {recipientType === "police" ? (
-              <div className="flex gap-2">
-                <select
-                  className="w-full border rounded-lg p-2 text-gray-700"
-                  value={selectedPolice}
-                  onChange={(e) => setSelectedPolice(e.target.value)}
-                >
-                  <option value="">Wybierz komendę...</option>
-                  {POLICE_DEPARTMENTS.map((dept) => (
-                    <option key={dept.email} value={dept.email}>
-                      {dept.label} ({dept.email})
-                    </option>
-                  ))}
-                </select>
+          {/* Formularz wyboru odbiorców */}
+          <div className="p-6 space-y-6">
+            {/* Wybór typu odbiorcy */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Typ odbiorcy
+              </label>
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={handleAddPolice}
-                  disabled={!selectedPolice}
-                  className={`px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold transition ${!selectedPolice ? "opacity-50 pointer-events-none" : ""}`}
+                  className={`flex items-center justify-center py-3 px-4 rounded-lg border-2 w-full transition font-medium ${
+                    recipientType === "police"
+                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => setRecipientType("police")}
                 >
-                  Dodaj
+                  Agresja drogowa
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center justify-center py-3 px-4 rounded-lg border-2 w-full transition font-medium ${
+                    recipientType === "custom"
+                      ? "border-blue-600 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                  onClick={() => setRecipientType("custom")}
+                >
+                  Podaj email
                 </button>
               </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="email"
-                  ref={inputRef}
-                  placeholder="Twój adres email"
-                  value={customEmailInput}
-                  onChange={e => {
-                    setCustomEmailInput(e.target.value);
-                    setEmailError(null);
-                  }}
-                  className="w-full border rounded-lg px-3 py-2 mb-1"
-                  autoFocus
-                  onKeyDown={handleInputKey}
-                  autoComplete="off"
-                />
-                <button
-                  className="absolute right-1 top-2 text-blue-700 text-sm px-2 py-1"
-                  type="button"
-                  disabled={!customEmailInput || !isValidEmail(customEmailInput)}
-                  onClick={() => handleAddCustomEmail(customEmailInput.trim())}
-                >
-                  Dodaj
-                </button>
-                {/* Sugestie z historii */}
-                {customSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-40 overflow-auto">
-                    {customSuggestions.map(email => (
-                      <div
-                        key={email}
-                        className="flex items-center justify-between px-3 py-1 hover:bg-blue-50 transition"
-                      >
-                        <span
-                          className="flex-1 cursor-pointer"
-                          onClick={() => handleAddCustomEmail(email)}
+            </div>
+
+            {/* Pole wyboru - zależnie od typu */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {recipientType === "police" ? "Komenda policji" : "Adres e-mail"}
+              </label>
+              {recipientType === "police" ? (
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 px-3 py-2 border rounded-lg text-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedPolice}
+                    onChange={(e) => setSelectedPolice(e.target.value)}
+                  >
+                    <option value="">Wybierz komendę...</option>
+                    {POLICE_DEPARTMENTS.map((dept) => (
+                      <option key={dept.email} value={dept.email}>
+                        {dept.label} ({dept.email})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddPolice}
+                    disabled={!selectedPolice}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Dodaj
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="email"
+                    ref={inputRef}
+                    placeholder="np. zgłoszenia@instytucja.gov.pl"
+                    value={customEmailInput}
+                    onChange={e => {
+                      setCustomEmailInput(e.target.value);
+                      setEmailError(null);
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    onKeyDown={handleInputKey}
+                    autoComplete="off"
+                  />
+                  <button
+                    className="absolute right-2 top-2 text-blue-600 text-sm px-2 py-1 hover:text-blue-700 font-medium"
+                    type="button"
+                    disabled={!customEmailInput || !isValidEmail(customEmailInput)}
+                    onClick={() => handleAddCustomEmail(customEmailInput.trim())}
+                  >
+                    Dodaj
+                  </button>
+                  
+                  {/* Sugestie z historii */}
+                  {customSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-auto">
+                      {customSuggestions.map(email => (
+                        <div
+                          key={email}
+                          className="flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition"
                         >
-                          {email}
-                        </span>
+                          <span
+                            className="flex-1 cursor-pointer text-sm"
+                            onClick={() => handleAddCustomEmail(email)}
+                          >
+                            {email}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveCustomHistory(email)}
+                            className="text-red-400 ml-2 px-1 hover:text-red-600 text-sm"
+                            title="Usuń z historii"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {emailError && (
+                    <div className="text-red-600 mt-2 text-sm">{emailError}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lista wybranych adresów */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Odbiorcy ({selectedRecipients.length})
+              </label>
+              <div className="min-h-[3rem] p-3 border rounded-lg bg-gray-50">
+                {selectedRecipients.length === 0 ? (
+                  <span className="text-gray-500 text-sm">Nie dodano odbiorców</span>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRecipients.map(email => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                      >
+                        {email}
                         <button
-                          onClick={() => handleRemoveCustomHistory(email)}
-                          className="text-red-400 ml-2 px-2 hover:text-red-600"
-                          title="Usuń z historii"
+                          className="ml-2 text-blue-600 hover:text-red-600 text-lg leading-none"
+                          title="Usuń z listy"
+                          onClick={() => handleRemoveRecipient(email)}
                         >
                           ×
                         </button>
-                      </div>
+                      </span>
                     ))}
                   </div>
                 )}
-                {emailError && (
-                  <div className="text-red-600 mt-1 text-sm">{emailError}</div>
-                )}
+              </div>
+            </div>
+
+            {/* Podgląd wiadomości */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Podgląd wiadomości
+              </label>
+              <div className="border rounded-lg p-4 bg-gray-50 text-sm text-gray-800 space-y-2">
+                <div><strong>Tytuł:</strong> {title}</div>
+                <div><strong>Treść:</strong> {description}</div>
+                {location && <div><strong>Lokalizacja:</strong> {location}</div>}
+                <div>
+                  <strong>Dowody:</strong>{" "}
+                  <a 
+                    href={folderUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-blue-600 hover:text-blue-700 underline break-all"
+                  >
+                    {folderUrl}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Błąd wysyłania */}
+            {sendError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-red-600 text-sm">{sendError}</div>
               </div>
             )}
-          </div>
 
-          {/* Lista wybranych adresów jako tagi */}
-          <div className="mb-6">
-            <div className="mb-1 font-medium">Adresy do wysyłki:</div>
-            <div className="flex flex-wrap gap-2 mb-1">
-              {selectedRecipients.length === 0 && (
-                <span className="text-gray-400">Nie dodano adresów</span>
-              )}
-              {selectedRecipients.map(email => (
-                <span
-                  key={email}
-                  className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
-                >
-                  {email}
-                  <button
-                    className="ml-2 text-blue-400 hover:text-red-600 text-lg leading-none"
-                    title="Usuń z wysyłki"
-                    onClick={() => handleRemoveRecipient(email)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
+            {/* Przycisk wysłania */}
+            <div className="pt-4 border-t border-gray-200">
+              <button
+                onClick={handleSend}
+                disabled={isSending || selectedRecipients.length === 0}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSending ? "Wysyłanie..." : "Wyślij zgłoszenie"}
+              </button>
             </div>
           </div>
-
-          {/* Podgląd wiadomości z zawijaniem linku */}
-          <div className="mb-6">
-            <div className="mb-1 font-medium">Podgląd wiadomości:</div>
-            <div className="border rounded p-3 bg-gray-50 text-xs text-gray-800 whitespace-pre-wrap break-words" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
-              <b>Tytuł:</b> {title} <br />
-              <b>Treść:</b> {description} <br />
-              {location && (<><b>Lokalizacja:</b> {location}<br /></>)}
-              <b>Dowody:</b>{" "}
-              <a href={folderUrl} target="_blank" rel="noopener noreferrer" className="underline text-blue-600 break-all">
-                {folderUrl}
-              </a>
-            </div>
-          </div>
-
-          {sendError && (
-            <div className="mb-4 text-red-600 text-sm">{sendError}</div>
-          )}
-
-          <button
-            onClick={handleSend}
-            disabled={isSending}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg py-3 transition"
-          >
-            {isSending ? "Wysyłanie..." : "Wyślij zgłoszenie"}
-          </button>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
