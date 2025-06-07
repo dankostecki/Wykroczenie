@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Video, Upload, Plus } from 'lucide-react';
-import { GoogleUser, MediaFile } from '../types';
+import { GoogleAllUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
 import { useGoogleDriveUpload } from '../hooks/useGoogleDriveUpload';
