@@ -171,7 +171,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({ user, onSi
   </button>
 
   {/* Wiersz 2: Zrób zdjęcie | Nagraj film */}
-  <div className="flex gap-2">
+  <div className="flex gap-4">
     <button
       onClick={takePhoto}
       className="flex-1 flex items-center justify-center gap-4 px-4 py-3 border border-blue-300 rounded-lg bg-white text-blue-700 hover:bg-blue-50 transition font-medium"
