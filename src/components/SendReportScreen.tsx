@@ -184,7 +184,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
             {/* Wybór typu odbiorcy */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Typ odbiorcy
+                Rodzaj zdarzenia
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -207,7 +207,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                   }`}
                   onClick={() => setRecipientType("custom")}
                 >
-                  Podaj email
+                  Inny incydent
                 </button>
               </div>
             </div>
