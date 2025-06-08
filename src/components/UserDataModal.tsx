@@ -98,10 +98,10 @@ export const UserDataModal: React.FC<UserDataModalProps> = ({
   const isEditMode = !!initialData;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-orange-500 to-red-500 rounded-t-lg">
           <div className="flex items-center gap-2">
             <User className="w-5 h-5 text-white" />
             <h2 className="text-lg font-semibold text-white">
