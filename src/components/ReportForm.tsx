@@ -5,6 +5,40 @@ import { FileThumbnail } from './FileThumbnail';
 import { LocationModal, Location } from './LocationModal';
 import { Header } from './Header';
 
+// Funkcje localStorage dla historii tytułów i treści
+const TITLE_HISTORY_KEY = 'report_title_history';
+const CONTENT_HISTORY_KEY = 'report_content_history';
+
+const getTitleHistory = (): string[] => {
+  try {
+    const data = localStorage.getItem(TITLE_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveTitleHistory = (titles: string[]) => {
+  localStorage.setItem(TITLE_HISTORY_KEY, JSON.stringify(titles.slice(0, 10))); // max 10
+};
+
+const getContentHistory = (): string[] => {
+  try {
+    const data = localStorage.getItem(CONTENT_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveContentHistory = (contents: string[]) => {
+  localStorage.setItem(CONTENT_HISTORY_KEY, JSON.stringify(contents.slice(0, 10))); // max 10
+};
+
+const truncateText = (text: string, maxLength: number = 60) => {
+  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+};
+
 interface ReportFormProps {
   user: GoogleAllUser;
   files: MediaFile[];
@@ -140,6 +174,14 @@ export const ReportForm: React.FC<ReportFormProps> = ({
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [formEnabled, setFormEnabled] = useState(false);
 
+  // State dla autocomplete
+  const [titleHistory, setTitleHistory] = useState<string[]>(getTitleHistory());
+  const [contentHistory, setContentHistory] = useState<string[]>(getContentHistory());
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+  const [contentSuggestions, setContentSuggestions] = useState<string[]>([]);
+  const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
+  const [showContentSuggestions, setShowContentSuggestions] = useState(false);
+
   // Sprawdź przy pierwszym renderze czy pokazać modal instrukcji
   useEffect(() => {
     const hasPersonalData = hasUserPersonalData();
@@ -152,6 +194,34 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       setShowInstructionsModal(true);
     }
   }, []);
+
+  // Autocomplete dla tytułów
+  useEffect(() => {
+    if (reportData.title.length > 1) {
+      const filtered = titleHistory.filter(title =>
+        title.toLowerCase().includes(reportData.title.toLowerCase()) &&
+        title !== reportData.title
+      ).slice(0, 5);
+      setTitleSuggestions(filtered);
+      setShowTitleSuggestions(filtered.length > 0);
+    } else {
+      setShowTitleSuggestions(false);
+    }
+  }, [reportData.title, titleHistory]);
+
+  // Autocomplete dla treści
+  useEffect(() => {
+    if (reportData.description.length > 1) {
+      const filtered = contentHistory.filter(content =>
+        content.toLowerCase().includes(reportData.description.toLowerCase()) &&
+        content !== reportData.description
+      ).slice(0, 5);
+      setContentSuggestions(filtered);
+      setShowContentSuggestions(filtered.length > 0);
+    } else {
+      setShowContentSuggestions(false);
+    }
+  }, [reportData.description, contentHistory]);
 
   const handleInputChange = (field: keyof ReportData, value: string) => {
     setReportData(prev => ({
@@ -182,6 +252,32 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     setFormEnabled(true);
   };
 
+  // Funkcje dla autocomplete tytułów
+  const selectTitle = (title: string) => {
+    handleInputChange('title', title);
+    setShowTitleSuggestions(false);
+  };
+
+  const removeTitleFromHistory = (titleToRemove: string) => {
+    const updated = titleHistory.filter(t => t !== titleToRemove);
+    setTitleHistory(updated);
+    saveTitleHistory(updated);
+    setTitleSuggestions(prev => prev.filter(t => t !== titleToRemove));
+  };
+
+  // Funkcje dla autocomplete treści
+  const selectContent = (content: string) => {
+    handleInputChange('description', content);
+    setShowContentSuggestions(false);
+  };
+
+  const removeContentFromHistory = (contentToRemove: string) => {
+    const updated = contentHistory.filter(c => c !== contentToRemove);
+    setContentHistory(updated);
+    saveContentHistory(updated);
+    setContentSuggestions(prev => prev.filter(c => c !== contentToRemove));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportData.title.trim()) {
@@ -192,6 +288,20 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       alert('Proszę opisać co się stało');
       return;
     }
+
+    // Zapisz do historii
+    if (reportData.title.trim() && !titleHistory.includes(reportData.title.trim())) {
+      const newTitleHistory = [reportData.title.trim(), ...titleHistory].slice(0, 10);
+      setTitleHistory(newTitleHistory);
+      saveTitleHistory(newTitleHistory);
+    }
+
+    if (reportData.description.trim() && !contentHistory.includes(reportData.description.trim())) {
+      const newContentHistory = [reportData.description.trim(), ...contentHistory].slice(0, 10);
+      setContentHistory(newContentHistory);
+      saveContentHistory(newContentHistory);
+    }
+
     onSubmit({
       title: reportData.title,
       description: reportData.description,
@@ -221,7 +331,8 @@ export const ReportForm: React.FC<ReportFormProps> = ({
           {/* Formularz - aktywny dopiero po przeczytaniu instrukcji */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div className={formEnabled ? '' : 'opacity-50 pointer-events-none'}>
-              <div>
+              {/* Tytuł incydentu z autocomplete */}
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tytuł incydentu
                 </label>
@@ -233,10 +344,39 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   required
                   disabled={!formEnabled}
+                  autoComplete="off"
                 />
+                
+                {/* Dropdown z podpowiedziami tytułów */}
+                {showTitleSuggestions && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-auto">
+                    {titleSuggestions.map(title => (
+                      <div
+                        key={title}
+                        className="flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition"
+                      >
+                        <span
+                          className="flex-1 cursor-pointer text-sm truncate"
+                          onClick={() => selectTitle(title)}
+                          title={title}
+                        >
+                          {truncateText(title, 50)}
+                        </span>
+                        <button
+                          onClick={() => removeTitleFromHistory(title)}
+                          className="text-red-400 ml-2 px-1 hover:text-red-600 text-sm"
+                          title="Usuń z historii"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
-              <div>
+              {/* Opis zdarzenia z autocomplete */}
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Opis zdarzenia
                 </label>
@@ -248,7 +388,35 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                   required
                   disabled={!formEnabled}
+                  autoComplete="off"
                 />
+                
+                {/* Dropdown z podpowiedziami treści */}
+                {showContentSuggestions && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-auto">
+                    {contentSuggestions.map(content => (
+                      <div
+                        key={content}
+                        className="flex items-center justify-between px-3 py-2 hover:bg-blue-50 transition"
+                      >
+                        <span
+                          className="flex-1 cursor-pointer text-sm truncate"
+                          onClick={() => selectContent(content)}
+                          title={content}
+                        >
+                          {truncateText(content, 80)}
+                        </span>
+                        <button
+                          onClick={() => removeContentFromHistory(content)}
+                          className="text-red-400 ml-2 px-1 hover:text-red-600 text-sm"
+                          title="Usuń z historii"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Lokalizacja */}
