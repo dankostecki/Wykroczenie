@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Info } from 'lucide-react';
 import { GoogleAllUser, MediaFile, ReportData } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { LocationModal, Location } from './LocationModal';
@@ -21,6 +21,105 @@ interface ReportFormProps {
   }) => void;
 }
 
+// Funkcja sprawdzająca czy użytkownik ma zapisane dane osobowe
+const hasUserPersonalData = (): boolean => {
+  try {
+    const userData = localStorage.getItem('user_personal_data');
+    if (!userData) return false;
+    
+    const parsed = JSON.parse(userData);
+    // Sprawdzamy czy są wszystkie kluczowe dane
+    return !!(parsed.name && parsed.address && parsed.phone);
+  } catch {
+    return false;
+  }
+};
+
+// Modal z instrukcjami
+const InstructionsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4 border-b">
+          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+            <Info className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Informacje dla policji
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Aby policjanci mogli skutecznie ścigać sprawców
+            </p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-gray-700">
+            Prosimy o przekazanie wraz z materiałem filmowym następujących informacji:
+          </p>
+          
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-sm font-medium">
+                1
+              </div>
+              <div className="text-sm text-gray-700">
+                <strong>Data, godzina i miejsce zdarzenia</strong><br />
+                (miejscowość, nr drogi/ulica)
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-sm font-medium">
+                2
+              </div>
+              <div className="text-sm text-gray-700">
+                <strong>Dane pojazdu sprawcy</strong><br />
+                (numer rejestracyjny, marka, kolor)
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-sm font-medium">
+                3
+              </div>
+              <div className="text-sm text-gray-700">
+                <strong>Twoje dane kontaktowe</strong><br />
+                (imię, nazwisko, adres, telefon)
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-3 mt-4">
+            <p className="text-xs text-blue-800">
+              💡 <strong>Wskazówka:</strong> W przyszłości będzie można zapisać swoje dane w ustawieniach, 
+              aby nie wpisywać ich za każdym razem.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t">
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+          >
+            Rozumiem, wypełnij zgłoszenie
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ReportForm: React.FC<ReportFormProps> = ({
   user,
   files,
@@ -38,6 +137,21 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     coordinates: undefined,
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [formEnabled, setFormEnabled] = useState(false);
+
+  // Sprawdź przy pierwszym renderze czy pokazać modal instrukcji
+  useEffect(() => {
+    const hasPersonalData = hasUserPersonalData();
+    
+    if (hasPersonalData) {
+      // Użytkownik ma dane w ustawieniach - od razu włącz formularz
+      setFormEnabled(true);
+    } else {
+      // Brak danych - pokaż modal z instrukcjami
+      setShowInstructionsModal(true);
+    }
+  }, []);
 
   const handleInputChange = (field: keyof ReportData, value: string) => {
     setReportData(prev => ({
@@ -63,7 +177,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({
     }));
   };
 
-  // Wysyłka danych do rodzica (EvidenceCollector) przez onSubmit!
+  const handleInstructionsClose = () => {
+    setShowInstructionsModal(false);
+    setFormEnabled(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportData.title.trim()) {
@@ -80,10 +198,6 @@ export const ReportForm: React.FC<ReportFormProps> = ({
       location: reportData.location,
       coordinates: reportData.coordinates,
     });
-  };
-
-  const removeFile = (id: string) => {
-    // Pliki można usuwać tylko w EvidenceCollector
   };
 
   return (
@@ -104,99 +218,114 @@ export const ReportForm: React.FC<ReportFormProps> = ({
             </p>
           </div>
 
-          {/* Formularz */}
+          {/* Formularz - aktywny dopiero po przeczytaniu instrukcji */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tytuł incydentu
-              </label>
-              <input
-                type="text"
-                value={reportData.title}
-                onChange={e => handleInputChange('title', e.target.value)}
-                placeholder="np. Agresja drogowa"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-               Opis zdarzenia
-              </label>
-              <textarea
-                rows={6}
-                value={reportData.description}
-                onChange={e => handleInputChange('description', e.target.value)}
-                placeholder="Podaj opis i miejsce zdarzenia, dane dotyczące sprawcy/pojazdu sprawcy oraz Twoje dane: imię i nazwisko, adres do korespondencji, tel. kontaktowy."
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
-                required
-              />
+            <div className={formEnabled ? '' : 'opacity-50 pointer-events-none'}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tytuł incydentu
+                </label>
+                <input
+                  type="text"
+                  value={reportData.title}
+                  onChange={e => handleInputChange('title', e.target.value)}
+                  placeholder="np. Agresja drogowa na A4"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                  disabled={!formEnabled}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Opis zdarzenia
+                </label>
+                <textarea
+                  rows={6}
+                  value={reportData.description}
+                  onChange={e => handleInputChange('description', e.target.value)}
+                  placeholder="Opisz szczegółowo zdarzenie, podaj datę i godzinę, dane pojazdu sprawcy (rejestracja, marka, kolor) oraz swoje dane kontaktowe (imię, nazwisko, adres, telefon)."
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  required
+                  disabled={!formEnabled}
+                />
+              </div>
+
+              {/* Lokalizacja */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsLocationModalOpen(true)}
+                  disabled={!formEnabled}
+                  className="w-full flex items-center px-3 py-2 border rounded-md bg-white hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                  style={{ minHeight: 44 }}
+                >
+                  <MapPin className="w-5 h-5 text-blue-600 mr-2" />
+                  <span className="text-gray-700 truncate">
+                    {reportData.location
+                      ? reportData.location
+                      : 'Wybierz lokalizację na mapie (opcjonalne)'}
+                  </span>
+                </button>
+                {reportData.location && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-sm text-gray-600 truncate">{reportData.location}</span>
+                    <button
+                      type="button"
+                      onClick={handleLocationRemove}
+                      disabled={!formEnabled}
+                      className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed"
+                    >
+                      Usuń lokalizację
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Dowody */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Dowody ({files.length})
+                </h3>
+                {files.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-4">
+                    {files.map(file => (
+                      <div key={file.id} className="relative">
+                        <FileThumbnail mediaFile={file} />
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md">
+                            <span className="text-white text-xs">Przesyłanie…</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">Brak załączonych plików</p>
+                )}
+              </div>
             </div>
 
-            {/* --- Lokalizacja --- */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsLocationModalOpen(true)}
-                className="w-full flex items-center px-3 py-2 border rounded-md bg-white hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{ minHeight: 44 }}
-              >
-                <MapPin className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-gray-700 truncate">
-                  {reportData.location
-                    ? reportData.location
-                    : 'Wybierz lokalizację na mapie'}
-                </span>
-              </button>
-              {reportData.location && (
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-600 truncate">{reportData.location}</span>
-                  <button
-                    type="button"
-                    onClick={handleLocationRemove}
-                    className="text-xs text-red-500 hover:underline"
-                  >
-                    Usuń lokalizację
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* --- Dowody --- */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                Dowody ({files.length})
-              </h3>
-              {files.length > 0 ? (
-                <div className="grid grid-cols-4 gap-4">
-                  {files.map(file => (
-                    <div key={file.id} className="relative">
-                      <FileThumbnail mediaFile={file} />
-                      {isUploading && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md">
-                          <span className="text-white text-xs">Przesyłanie…</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">Brak załączonych plików</p>
-              )}
-            </div>
             <div className="pt-4 border-t border-gray-200">
               <button
                 type="submit"
-                disabled={isUploading && uploadProgress < 100}
+                disabled={!formEnabled || (isUploading && uploadProgress < 100)}
                 className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                Prześlij zgłoszenie
+                {!formEnabled ? 'Najpierw przeczytaj instrukcje' : 'Prześlij zgłoszenie'}
               </button>
             </div>
           </form>
         </div>
       </main>
 
+      {/* Modal z instrukcjami */}
+      <InstructionsModal
+        isOpen={showInstructionsModal}
+        onClose={handleInstructionsClose}
+      />
+
+      {/* Modal lokalizacji */}
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
