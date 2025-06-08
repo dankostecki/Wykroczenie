@@ -244,7 +244,7 @@ export const ReportForm: React.FC<ReportFormProps> = ({
                   rows={6}
                   value={reportData.description}
                   onChange={e => handleInputChange('description', e.target.value)}
-                  placeholder="Opisz szczegółowo zdarzenie, podaj datę i godzinę, dane pojazdu sprawcy (rejestracja, marka, kolor) oraz swoje dane kontaktowe (imię, nazwisko, adres, telefon)."
+                  placeholder="Opisz szczegółowo zdarzenie, podaj datę i godzinę, dane sprawcy, dane pojazdu sprawcy (rejestracja, marka, kolor) oraz swoje dane kontaktowe (imię, nazwisko, adres, telefon)."
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
                   required
                   disabled={!formEnabled}
