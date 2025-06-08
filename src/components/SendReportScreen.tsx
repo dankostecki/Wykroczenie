@@ -33,6 +33,7 @@ interface SendReportScreenProps {
   description: string;
   location?: string;
   folderUrl: string;
+  userData?: { name: string; address: string; phone: string } | null;
   onSend: (recipients: string[]) => Promise<void>;
   isSending: boolean;
   sendError?: string | null;
@@ -347,6 +348,17 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
                     {folderUrl}
                   </a>
                 </div>
+
+                {userData && (
+  <div>
+    <strong>Dane zgłaszającego:</strong>
+    <div className="ml-4 mt-1 text-sm">
+      <div><strong>Imię i nazwisko:</strong> {userData.name}</div>
+      <div><strong>Adres:</strong> {userData.address}</div>
+      <div><strong>Telefon:</strong> {userData.phone}</div>
+    </div>
+  </div>
+)}
               </div>
             </div>
 
