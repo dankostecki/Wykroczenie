@@ -181,10 +181,10 @@ export const UserDataModal: React.FC<UserDataModalProps> = ({
           </form>
 
           {/* Informacja o prywatności */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-blue-800">
+          <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+  <div className="flex items-start gap-2">
+    <Info className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+    <p className="text-xs text-orange-800">
                 Dane są przechowywane wyłącznie na urządzeniu zgłaszającego i służą do dodania ich w wiadomości email wysyłanej służbom.
               </p>
             </div>
