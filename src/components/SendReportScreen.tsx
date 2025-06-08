@@ -65,6 +65,7 @@ export const SendReportScreen: React.FC<SendReportScreenProps> = ({
   description,
   location,
   folderUrl,
+  userData,
   onSend,
   isSending,
   sendError,
