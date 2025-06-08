@@ -452,6 +452,7 @@ if (fileInputRef.current) {
         description={reportData.description}
         location={reportData.location}
         folderUrl={folderUrl}
+        userData={userData}
         onSend={handleSendReport}
         isSending={sending}
         sendError={sendError}
