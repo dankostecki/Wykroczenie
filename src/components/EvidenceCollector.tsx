@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Video, Upload, Plus, User, X } from 'lucide-react';
+import { Camera, Video, Upload, Plus } from 'lucide-react';
 import { GoogleAllUser, MediaFile } from '../types';
 import { FileThumbnail } from './FileThumbnail';
 import { ReportForm } from './ReportForm';
@@ -46,183 +46,6 @@ async function sendGmail({
   }
 }
 
-// Typ dla danych osobowych
-interface PersonalData {
-  name: string;
-  phone: string;
-  address: string;
-}
-
-// Funkcje do obsługi localStorage
-const PERSONAL_DATA_KEY = 'user_personal_data';
-
-const getPersonalData = (): PersonalData | null => {
-  try {
-    const data = localStorage.getItem(PERSONAL_DATA_KEY);
-    return data ? JSON.parse(data) : null;
-  } catch {
-    return null;
-  }
-};
-
-const savePersonalData = (data: PersonalData) => {
-  localStorage.setItem(PERSONAL_DATA_KEY, JSON.stringify(data));
-};
-
-const removePersonalData = () => {
-  localStorage.removeItem(PERSONAL_DATA_KEY);
-};
-
-const hasCompletePersonalData = (data: PersonalData | null): boolean => {
-  return !!(data?.name?.trim() && data?.phone?.trim() && data?.address?.trim());
-};
-
-// Drawer z formularzem danych osobowych
-const PersonalDataDrawer: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (data: PersonalData) => void;
-  initialData?: PersonalData | null;
-}> = ({ isOpen, onClose, onSave, initialData }) => {
-  const [formData, setFormData] = useState<PersonalData>(
-    initialData || { name: '', phone: '', address: '' }
-  );
-
-  const handleSave = () => {
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim()) {
-      alert('Wypełnij wszystkie pola');
-      return;
-    }
-    onSave(formData);
-    onClose();
-  };
-
-  const handleClear = () => {
-    if (confirm('Czy na pewno chcesz usunąć zapisane dane?')) {
-      removePersonalData();
-      setFormData({ name: '', phone: '', address: '' });
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
-      />
-      
-      {/* Drawer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-xl z-50 max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Twoje dane
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-4 overflow-y-auto">
-          <p className="text-sm text-gray-600">
-            Zapisz swoje dane, aby nie wpisywać ich przy każdym zgłoszeniu. 
-            Będą automatycznie dodawane do wysyłanych maili.
-          </p>
-
-          {/* Informacja o prywatności */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="text-xs text-blue-800">
-                <p className="font-medium mb-1">🔒 Prywatność danych</p>
-                <p>
-                  Twoje dane są przechowywane <strong>tylko na tym urządzeniu</strong> i służą wyłącznie do 
-                  automatycznego umieszczenia w e-mailach wysyłanych do służb. 
-                  Aplikacja nie wysyła danych nigdzie indziej.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Imię i nazwisko
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="np. Jan Kowalski"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Numer telefonu
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="np. +48 123 456 789"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Adres do korespondencji
-              </label>
-              <textarea
-                rows={3}
-                value={formData.address}
-                onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="np. ul. Testowa 1, 00-001 Warszawa"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-2 pt-4">
-            <button
-              onClick={handleSave}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-            >
-              Zapisz dane
-            </button>
-            {initialData && (
-              <button
-                onClick={handleClear}
-                className="px-4 py-3 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors"
-              >
-                Usuń dane
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
-
 interface EvidenceCollectorProps {
   user: GoogleAllUser;
   accessToken: string | null;
@@ -252,10 +75,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string[]>([]);
-
-  // Nowe stany dla drawer
-  const [isPersonalDataDrawerOpen, setIsPersonalDataDrawerOpen] = useState(false);
-  const [personalData, setPersonalData] = useState<PersonalData | null>(getPersonalData());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -316,12 +135,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     }
   };
 
-  // Obsługa zapisywania danych osobowych
-  const handleSavePersonalData = (data: PersonalData) => {
-    savePersonalData(data);
-    setPersonalData(data);
-  };
-
   // Po kliknięciu "Kontynuuj zgłoszenie"
   const handleContinueToReport = async () => {
     if (files.length === 0) {
@@ -354,7 +167,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     setCurrentStep('send');
   };
 
-  // Wysyłka maila z automatycznym dodaniem danych osobowych
+  // Wysyłka maila
   const handleSendReport = async (recipients: string[]) => {
     if (!accessToken) {
       setSendError('Brak tokenu Google. Zaloguj się ponownie.');
@@ -365,24 +178,17 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
     try {
       let body = `${reportData.description}\n\n`;
 
-      if (reportData.location) {
-        body += `Lokalizacja:\n${reportData.location}\n`;
-        if (reportData.coordinates) {
-          body += `(${reportData.coordinates.lat}, ${reportData.coordinates.lng})\n`;
-        }
-        body += `\n`;
-      }
+if (reportData.location) {
+  body += `Lokalizacja:\n${reportData.location}\n`;
 
-      // Automatyczne dodanie danych osobowych jeśli są zapisane
-      const currentPersonalData = getPersonalData();
-      if (hasCompletePersonalData(currentPersonalData)) {
-        body += `Dane zgłaszającego:\n`;
-        body += `Imię i nazwisko: ${currentPersonalData!.name}\n`;
-        body += `Telefon: ${currentPersonalData!.phone}\n`;
-        body += `Adres: ${currentPersonalData!.address}\n\n`;
-      }
+  if (reportData.coordinates) {
+    body += `(${reportData.coordinates.lat}, ${reportData.coordinates.lng})\n`;
+  }
 
-      body += `Dowody: ${folderUrl}`;
+  body += `\n`; // <- PUSTA LINIA przed sekcją "Dowody"
+}
+
+body += `Dowody: ${folderUrl}`;
 
       await sendGmail({
         accessToken,
@@ -412,8 +218,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
 
   // KROK 1: DOWODY
   if (currentStep === 'evidence') {
-    const hasCompleteData = hasCompletePersonalData(personalData);
-    
     return (
       <div className="min-h-[100dvh] bg-gradient-to-br from-blue-50 to-indigo-100">
         <Header title="Zbieranie Dowodów" onSignOut={onSignOut} showBack={false} />
@@ -489,43 +293,8 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                 <div className="text-red-600 mt-4 text-sm">{uploadError}</div>
               )}
             </div>
-            
-            {/* Sekcja z przyciskami na dole */}
             {files.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-3">
-                {/* Przycisk danych osobowych - pokazuje się tylko gdy nie ma kompletnych danych */}
-                {!hasCompleteData && (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setIsPersonalDataDrawerOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Podaj swoje dane</span>
-                    </button>
-                    <p className="text-xs text-gray-500 text-center">
-                      Dane przechowywane tylko na urządzeniu • Automatyczne dodanie do e-maili
-                    </p>
-                  </div>
-                )}
-                
-                {/* Informacja o zapisanych danych - pokazuje się tylko gdy ma kompletne dane */}
-                {hasCompleteData && (
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-700">
-                      <User className="w-4 h-4" />
-                      <span className="text-sm font-medium">Twoje dane zostaną automatycznie dodane</span>
-                    </div>
-                    <button
-                      onClick={() => setIsPersonalDataDrawerOpen(true)}
-                      className="text-xs text-green-600 hover:text-green-800 underline"
-                    >
-                      Edytuj
-                    </button>
-                  </div>
-                )}
-                
-                {/* Przycisk kontynuuj */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
                 <button
                   onClick={handleContinueToReport}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
@@ -539,15 +308,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
             )}
           </div>
         </main>
-
-        {/* Drawer z danymi osobowymi */}
-        <PersonalDataDrawer
-          isOpen={isPersonalDataDrawerOpen}
-          onClose={() => setIsPersonalDataDrawerOpen(false)}
-          onSave={handleSavePersonalData}
-          initialData={personalData}
-        />
-
         <input
           ref={fileInputRef}
           type="file"
@@ -587,7 +347,6 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         uploadProgress={progress}
         isUploading={isUploading}
         onSubmit={handleSubmitForm}
-        hasPersonalData={hasCompletePersonalData(personalData)} // przekazujemy info o danych
       />
     );
   }
@@ -602,8 +361,8 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         onSend={handleSendReport}
         isSending={sending}
         sendError={sendError}
-        onSignOut={onSignOut}
-        onBack={() => setCurrentStep('report')}
+        onSignOut={onSignOut}                 // <-- wymagany props!
+        onBack={() => setCurrentStep('report')} // <-- wymagany props!
       />
     );
   }
@@ -617,7 +376,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
         location={reportData.location}
         folderUrl={folderUrl}
         onNewReport={handleNewReport}
-        onSignOut={onSignOut}
+        onSignOut={onSignOut} // <-- wymagany props!
       />
     );
   }
