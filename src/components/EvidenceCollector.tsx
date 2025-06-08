@@ -137,6 +137,11 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
       };
       setFiles(prev => [...prev, mediaFile]);
     });
+
+    // Wyczyść file input żeby można było dodać ten sam plik ponownie
+if (fileInputRef.current) {
+  fileInputRef.current.value = '';
+}
   };
 
   const removeFile = (id: string) => {
