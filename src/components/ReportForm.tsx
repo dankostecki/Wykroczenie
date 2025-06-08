@@ -63,7 +63,7 @@ const InstructionsModal: React.FC<{
         {/* Content */}
         <div className="p-4 space-y-4">
           <p className="text-sm text-gray-700">
-            Prosimy o przekazanie wraz z materiałem filmowym następujących informacji:
+            Prosimy o przekazanie wraz z załączonymi dowodami następujących informacji:
           </p>
           
           <div className="space-y-3">
@@ -82,8 +82,8 @@ const InstructionsModal: React.FC<{
                 2
               </div>
               <div className="text-sm text-gray-700">
-                <strong>Dane pojazdu sprawcy</strong><br />
-                (numer rejestracyjny, marka, kolor)
+                <strong>Dane sprawcy i pojazdu sprawcy, jeśli znane</strong><br />
+                (kto, numer rejestracyjny, marka, kolor)
               </div>
             </div>
             
