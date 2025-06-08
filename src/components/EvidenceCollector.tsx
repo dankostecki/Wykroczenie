@@ -317,6 +317,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                   </button>
                 </div>
               </div>
+              
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">
@@ -334,6 +335,7 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                     </button>
                   )}
                 </div>
+                
                 {files.length === 0 ? (
                   <div className="text-center py-3">
                     <Plus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
@@ -351,35 +353,40 @@ export const EvidenceCollector: React.FC<EvidenceCollectorProps> = ({
                     ))}
                   </div>
                 )}
+                
                 {uploadError && (
                   <div className="text-red-600 mt-4 text-sm">{uploadError}</div>
                 )}
-              </div>
-              {files.length > 0 && (
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-3">
-                  {/* Przycisk danych zgłaszającego */}
+
+                {/* Przycisk danych zgłaszającego - zawsze widoczny, styl z ramką */}
+                <div className="mt-4">
                   <button
                     onClick={openUserDataModal}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+                    className="w-full flex items-center justify-center gap-4 px-4 py-3 border border-orange-300 rounded-lg bg-white text-orange-700 hover:bg-orange-50 transition font-medium"
                   >
-                    <User className="w-5 h-5 mr-2" />
+                    <User className="w-5 h-5" />
                     <span>{userData ? 'Edytuj dane zgłaszającego' : 'Dodaj dane zgłaszającego'}</span>
                   </button>
-                  
-                  {/* Przycisk kontynuuj zgłoszenie */}
-                  <button
-                    onClick={handleContinueToReport}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-                  >
-                    <span>Kontynuuj zgłoszenie</span>
-                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
                 </div>
-              )}
+
+                {/* Przycisk kontynuuj zgłoszenie - tylko po dodaniu plików */}
+                {files.length > 0 && (
+                  <div className="mt-3">
+                    <button
+                      onClick={handleContinueToReport}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+                    >
+                      <span>Kontynuuj zgłoszenie</span>
+                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </main>
+          
           <input
             ref={fileInputRef}
             type="file"
