@@ -62,7 +62,7 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loadin
       {/* Footer z informacją prawną */}
       <div className="mt-8 text-center">
         <p className="text-xs text-gray-500 max-w-md">
-          Korzystając z aplikacji akceptujesz nasze warunki użytkowania. 
+          Korzystając z aplikacji akceptujesz warunki użytkowania. 
           Aplikacja działa w modelu client-side i nie przechowuje Twoich danych na naszych serwerach.
         </p>
       </div>
@@ -246,7 +246,7 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loadin
 
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <p className="text-sm text-gray-600 italic">
-                  Akceptując Regulamin, Użytkownik potwierdza, że zapoznał się z jego treścią, rozumie model działania aplikacji client-side i zobowiązuje się do przestrzegania Regulaminu.
+                  Korzystając z aplikacji Użytkownik akceptuje Regulamin, Użytkownik potwierdza, że zapoznał się z jego treścią, rozumie model działania aplikacji client-side i zobowiązuje się do przestrzegania Regulaminu.
                 </p>
               </div>
             </div>
@@ -272,7 +272,7 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loadin
             {/* Treść modala ze scrollem */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)] prose prose-sm max-w-none">
               <div className="text-sm text-gray-600 mb-6">
-                <strong>Obowiązuje od:</strong> [DATA]<br />
+                <strong>Obowiązuje od:</strong> 08.06.2025<br />
                 <strong>Wersja:</strong> 1.0
               </div>
 
@@ -281,10 +281,7 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loadin
                 <div className="text-sm text-gray-700 space-y-2">
                   <p><strong>Dostawca aplikacji:</strong></p>
                   <ul className="list-disc list-inside ml-4 space-y-1">
-                    <li><strong>Nazwa:</strong> [NAZWA_FIRMY/OSOBY]</li>
-                    <li><strong>Adres:</strong> [ADRES]</li>
-                    <li><strong>Email:</strong> [EMAIL]</li>
-                    <li><strong>Telefon:</strong> [TELEFON]</li>
+                    <li><strong>Nazwa:</strong> https://x.com/Dan_Kostecki</li>
                   </ul>
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <strong>UWAGA:</strong> Aplikacja działa w modelu client-side. Dostawca nie jest administratorem danych osobowych użytkowników w rozumieniu RODO, ponieważ nie przetwarza ani nie przechowuje danych osobowych na własnych serwerach.
@@ -393,8 +390,7 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({ onSignIn, loadin
                   <div className="text-sm text-gray-700">
                     <p>W sprawach dotyczących funkcjonalności aplikacji:</p>
                     <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                      <li><strong>Email:</strong> [EMAIL_KONTAKTOWY]</li>
-                      <li><strong>Adres:</strong> [ADRES_POCZTOWY]</li>
+                      <li><strong>Kontakt:</strong> https://x.com/Dan_Kostecki</li>
                     </ul>
                   </div>
                 </div>
